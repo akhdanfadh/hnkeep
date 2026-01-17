@@ -48,15 +48,17 @@ func readInput(path string) (string, error) {
 }
 
 // writeOutput writes the output to the specified path or stdout if the path is empty.
-func writeOutput(path, data string) error {
+func writeOutput(path, data string) (err error) {
 	// NOTE: Use bufio.Writer here if you are making many small writes and want to avoid
 	// overhead of frequent syscalls. However, we are writing only once in this code.
 	// - https://pkg.go.dev/bufio#Writer
 	var w io.Writer = os.Stdout // fallback
 	if path != "" {
-		f, err := os.Create(path)
-		if err != nil {
-			return err
+		// NOTE: I wrote a bug here by using `err :=` which shadowed the named return
+		// `err` the defer needs to report Close() errors. So be careful with that.
+		f, createErr := os.Create(path)
+		if createErr != nil {
+			return createErr
 		}
 		defer func() {
 			if closeErr := f.Close(); closeErr != nil && err == nil {
@@ -66,7 +68,7 @@ func writeOutput(path, data string) error {
 		w = f
 	}
 
-	_, err := io.WriteString(w, data)
+	_, err = io.WriteString(w, data)
 	return err
 }
 

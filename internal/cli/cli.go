@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
 )
 
@@ -108,6 +109,9 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("parsing input: %w", err)
 	}
+
+	// TODO: do something
+	_ = hackernews.NewClient()
 
 	// NOTE: Go strings are immutable, so using string concatenation in a loop
 	// can lead to excessive memory allocations (a hint from `go vet`).

@@ -29,4 +29,6 @@ var (
 	ErrItemNotFound = errors.New("item not found")
 	// ErrItemDeleted is returned when the requested item is marked as deleted.
 	ErrItemDeleted = errors.New("item is deleted")
+	// ErrItemDead is returned when the requested item is marked as dead.
+	ErrItemDead = errors.New("item is dead")
 )

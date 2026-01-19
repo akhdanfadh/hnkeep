@@ -55,17 +55,20 @@ func TestClient_GetItem(t *testing.T) {
 			wantErr:    true,
 			errContain: "deleted",
 		},
-		"404 response": {
+		"dead item": {
+			response: &Item{
+				ID:   3742902,
+				Dead: true,
+			},
+			statusCode: http.StatusOK,
+			wantErr:    true,
+			errContain: "dead",
+		},
+		"null response (non-existent item)": {
 			response:   nil,
-			statusCode: http.StatusNotFound,
+			statusCode: http.StatusOK,
 			wantErr:    true,
 			errContain: "not found",
-		},
-		"unexpected status code": {
-			response:   nil,
-			statusCode: http.StatusInternalServerError,
-			wantErr:    true,
-			errContain: "unexpected status",
 		},
 		"invalid JSON response": {
 			response:   "invalid json",

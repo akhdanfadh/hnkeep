@@ -80,7 +80,9 @@ func (c *Client) GetItem(id int) (*Item, error) {
 			return item, nil // immediate return on success
 		}
 
-		if errors.Is(err, ErrItemNotFound) || errors.Is(err, ErrItemDeleted) {
+		if errors.Is(err, ErrItemNotFound) ||
+			errors.Is(err, ErrItemDeleted) ||
+			errors.Is(err, ErrItemDead) {
 			return nil, err // immediate return on known errors
 		}
 
@@ -101,21 +103,23 @@ func (c *Client) fetchItem(url string) (*Item, error) {
 	// close are transient and don't indicate application logic issues.
 	defer func() { _ = resp.Body.Close() }()
 
-	if resp.StatusCode == http.StatusNotFound {
-		return nil, ErrItemNotFound
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status: %d", resp.StatusCode)
-	}
-
 	var item Item
 	if err := json.NewDecoder(resp.Body).Decode(&item); err != nil {
 		return nil, fmt.Errorf("decode failed: %w", err)
 	}
 
+	// NOTE: Turns out HN API always returns 200 OK (probably Firebase quirk, idk).
+	// For non-existent items, it returns "null" in the body.
+	if item.ID == 0 {
+		return nil, ErrItemNotFound
+	}
+
 	if item.Deleted {
 		return nil, ErrItemDeleted
+	}
+
+	if item.Dead {
+		return nil, ErrItemDead
 	}
 
 	return &item, nil

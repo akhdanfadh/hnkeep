@@ -7,8 +7,10 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestNewCachedClient(t *testing.T) {
@@ -353,5 +355,75 @@ func TestCachedClient_ClearCache(t *testing.T) {
 	}
 	if apiCalls.Load() != 2 {
 		t.Errorf("expected 2 API calls after cache clear, got %d", apiCalls.Load())
+	}
+}
+
+func TestCachedClient_GetItem_ConcurrentSameID(t *testing.T) {
+	testItem := Item{
+		ID:    12345,
+		Title: "Concurrent Test",
+		URL:   "https://example.com",
+	}
+
+	var apiCalls atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		apiCalls.Add(1)
+		time.Sleep(50 * time.Millisecond) // simulate delay to ensure goroutines overlap
+		w.WriteHeader(http.StatusOK)
+		_ = json.NewEncoder(w).Encode(testItem)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithHTTPClient(server.Client()),
+		WithBaseURL(server.URL),
+		WithRetries(1),
+		WithRetryWait(0),
+	)
+
+	cacheDir := t.TempDir()
+	cached, err := NewCachedClient(client, cacheDir)
+	if err != nil {
+		t.Fatalf("failed to create cached client: %v", err)
+	}
+
+	// launch multiple goroutines requesting the same item ID
+	const numGoroutines = 10
+	var wg sync.WaitGroup
+	wg.Add(numGoroutines)
+
+	results := make(chan *Item, numGoroutines)
+	errs := make(chan error, numGoroutines)
+	for range numGoroutines {
+		go func() {
+			defer wg.Done()
+			item, err := cached.GetItem(12345)
+			if err != nil {
+				errs <- err
+				return
+			}
+			results <- item
+		}()
+	}
+
+	wg.Wait()
+	close(results)
+	close(errs)
+
+	// check for errors
+	for err := range errs {
+		t.Errorf("unexpected error: %v", err)
+	}
+
+	// verify all goroutines got the same result
+	for item := range results {
+		if item.ID != testItem.ID || item.Title != testItem.Title {
+			t.Errorf("unexpected item: got %+v, want %+v", item, testItem)
+		}
+	}
+
+	// singleflight should ensure only one API call was made
+	if apiCalls.Load() != 1 {
+		t.Errorf("expected 1 API call with concurrent requests, got %d", apiCalls.Load())
 	}
 }

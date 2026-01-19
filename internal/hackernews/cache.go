@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 // Cache permanent-error states for negative caching.
@@ -34,11 +35,29 @@ func (noopLogger) Info(string, ...any)  {}
 func (noopLogger) Warn(string, ...any)  {}
 func (noopLogger) Error(string, ...any) {}
 
+// NOTE: This is a simplified "singleflight" concurrency control implementation.
+// It deduplicates concurrent requests for the same key (item ID in our case)
+// so only one fetch happens while others wait for the result.
+// If not configured, multiple goroutines requesting the same item ID could all
+// miss cache, all fetch from the API, and all write to the same file concurrently.
+// - https://pkg.go.dev/golang.org/x/sync/singleflight
+
+// inflightCall represents an in-progress fetch for an item.
+// Multiple goroutines requesting the same item ID share one inflightCall.
+type inflightCall struct {
+	wg   sync.WaitGroup
+	item *Item
+	err  error
+}
+
 // CachedClient wraps a Client with caching capabilities.
 type CachedClient struct {
 	client   *Client
 	cacheDir string
 	logger   Logger
+
+	mu       sync.Mutex
+	inflight map[int]*inflightCall
 }
 
 // CacheOption configures the CachedClient.
@@ -60,6 +79,7 @@ func NewCachedClient(client *Client, cacheDir string, opts ...CacheOption) (*Cac
 		client:   client,
 		cacheDir: cacheDir,
 		logger:   &noopLogger{},
+		inflight: make(map[int]*inflightCall),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -69,10 +89,6 @@ func NewCachedClient(client *Client, cacheDir string, opts ...CacheOption) (*Cac
 
 // GetItem retrieves an item by ID, using the cache if available.
 func (c *CachedClient) GetItem(id int) (*Item, error) {
-	// TODO: (potential race condition) if multiple goroutines call this
-	// function with the same ID simultaneously, they could all miss cache,
-	// all fetch from the API, and all write to the same file concurrently
-
 	// try read from cache (includes negative cache hits)
 	item, err := c.readCache(id)
 	if err == nil {
@@ -84,10 +100,32 @@ func (c *CachedClient) GetItem(id int) (*Item, error) {
 		return nil, err // cached error state
 	}
 
-	// fetch from API and cache result (best-effort)
-	item, err = c.client.GetItem(id)
-	_ = c.writeCache(id, item, err)
-	return item, err
+	// cache miss, try to deduplicate concurrent fetches
+	c.mu.Lock()
+	if call, ok := c.inflight[id]; ok {
+		// another goroutine is already fetching this item, wait for it
+		c.mu.Unlock()
+		call.wg.Wait() // block until fetch is done
+		return call.item, call.err
+	}
+
+	// otherwise, we are the first so create an inflightCall
+	call := &inflightCall{}
+	call.wg.Add(1)
+	c.inflight[id] = call
+	c.mu.Unlock()
+
+	// fetch from API and cache result (best-effort), outside lock
+	call.item, call.err = c.client.GetItem(id)
+	_ = c.writeCache(id, call.item, call.err)
+
+	// signal waiting goroutines and cleanup
+	c.mu.Lock()
+	delete(c.inflight, id)
+	c.mu.Unlock()
+	call.wg.Done()
+
+	return call.item, call.err
 }
 
 // getCachePath returns the file path for the cached item with the given ID.

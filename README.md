@@ -31,12 +31,15 @@ hnkeep -i harmonic-export.txt -o karakeep-import.json
 cat harmonic-export.txt | hnkeep > karakeep-import.json
 ```
 
-| Flag                | Default          | Description                            |
-| ------------------- | ---------------- | -------------------------------------- |
-| `-i, --input`       | stdin            | Input file (Harmonic export)           |
-| `-o, --output`      | stdout           | Output file (Karakeep JSON)            |
-| `-c, --concurrency` | 5                | Number of concurrent HN API requests   |
-| `-t, --tags`        | "src:hackernews" | Comma-separated tags for all bookmarks |
+| Flag                | Default                                        | Description                            |
+| ------------------- | ---------------------------------------------- | -------------------------------------- |
+| `-i, --input`       | stdin                                          | Input file (Harmonic export)           |
+| `-o, --output`      | stdout                                         | Output file (Karakeep JSON)            |
+| `-c, --concurrency` | 5                                              | Number of concurrent HN API requests   |
+| `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks |
+| `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory       |
+| `--no-cache`        |                                                | Disable caching of HN API responses    |
+| `--clear-cache`     |                                                | Clear the cache before running         |
 
 ## Contributing
 

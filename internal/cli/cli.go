@@ -6,56 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
 	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
 	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
-
-type Config struct {
-	InputPath   string
-	OutputPath  string
-	Concurrency int
-	Tags        []string
-}
-
-// parseFlags parses command-line flags and returns a Config struct.
-func parseFlags() *Config {
-	// NOTE: go flag package does not support alias natively.
-	// - https://github.com/golang/go/issues/35761
-
-	inputPath := flag.String("input", "", "Input file path, e.g., harmonic-export.txt (default to stdin)")
-	flag.StringVar(inputPath, "i", "", "alias for -input (default stdin)")
-
-	outputPath := flag.String("output", "", "Output file path, e.g.., karakeep-import.json (default stdout)")
-	flag.StringVar(outputPath, "o", "", "alias for -output (default stdout)")
-
-	concurrency := flag.Int("concurrency", 5, "Number of concurrent Hacker News fetches.")
-	flag.IntVar(concurrency, "c", 5, "alias for -concurrency")
-
-	tags := flag.String("tags", "src:hackernews", "Comma-separated list of tags to add to all imported bookmarks")
-	flag.StringVar(tags, "t", "src:hackernews", "alias for -tags")
-
-	flag.Parse()
-
-	var tagsSlice []string
-	if *tags != "" {
-		for split := range strings.SplitSeq(*tags, ",") {
-			if tag := strings.TrimSpace(split); tag != "" {
-				tagsSlice = append(tagsSlice, tag)
-			}
-		}
-	}
-
-	return &Config{
-		InputPath:   *inputPath,
-		OutputPath:  *outputPath,
-		Concurrency: *concurrency,
-		Tags:        tagsSlice,
-	}
-}
 
 // readInput reads the input from the specified path or stdin if the path is empty.
 func readInput(path string) (string, error) {
@@ -134,8 +90,22 @@ func Run() error {
 	}
 
 	client := hackernews.NewClient()
+	var fetcher converter.ItemFetcher = client
+	if cfg.CacheDir != "" {
+		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir)
+		if err != nil {
+			return fmt.Errorf("creating cached client: %w", err)
+		}
+		if cfg.ClearCache {
+			if err := cachedClient.ClearCache(); err != nil {
+				return fmt.Errorf("clearing cache: %w", err)
+			}
+		}
+		fetcher = cachedClient
+	}
+
 	conv := converter.New(
-		converter.WithFetcher(client),
+		converter.WithFetcher(fetcher),
 		converter.WithConcurrency(cfg.Concurrency),
 	)
 

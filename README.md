@@ -11,7 +11,7 @@ go install github.com/akhdanfadh/hnkeep/cmd/hnkeep@latest
 Or build from source:
 
 ```sh
-git clone https:/github.com/akhdanfadh/hnkeep.git
+git clone https://github.com/akhdanfadh/hnkeep.git
 cd hnkeep
 make build
 
@@ -21,18 +21,21 @@ go build -o hnkeep ./cmd/hnkeep
 
 ## Usage
 
+By default, the JSON output is written to stdout, while warnings and errors are written to stderr.
+
 ```sh
 # file to file
-hnkeep -i input.txt -o output.json
+hnkeep -i harmonic-export.txt -o karakeep-import.json
 
-# unix piping
-cat input.txt | hnkeep > output.json
+# piping and redirection (warnings/errors to stderr)
+cat harmonic-export.txt | hnkeep > karakeep-import.json
 ```
 
-| Flag           | Default | Description                  |
-| -------------- | ------- | ---------------------------- |
-| `-i, --input`  | stdin   | Input file (Harmonic export) |
-| `-o, --output` | stdout  | Output file (Karakeep JSON)  |
+| Flag                | Default | Description                          |
+| ------------------- | ------- | ------------------------------------ |
+| `-i, --input`       | stdin   | Input file (Harmonic export)         |
+| `-o, --output`      | stdout  | Output file (Karakeep JSON)          |
+| `-c, --concurrency` | 5       | Number of concurrent HN API requests |
 
 ## Contributing
 

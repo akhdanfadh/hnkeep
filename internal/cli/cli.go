@@ -1,19 +1,22 @@
 package cli
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"strings"
 
+	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
+	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
 
 type Config struct {
-	InputPath  string
-	OutputPath string
+	InputPath   string
+	OutputPath  string
+	Concurrency int
 }
 
 // parseFlags parses command-line flags and returns a Config struct.
@@ -25,10 +28,14 @@ func parseFlags() (*Config, error) {
 	outputPath := flag.String("output", "", "Output file path (Karakeep JSON import). Default to stdout.")
 	flag.StringVar(outputPath, "o", "", "alias for -output")
 
+	concurrency := flag.Int("concurrency", 5, "Number of concurrent Hacker News fetches.")
+	flag.IntVar(concurrency, "c", 5, "alias for -concurrency")
+
 	flag.Parse()
 	return &Config{
-		InputPath:  *inputPath,
-		OutputPath: *outputPath,
+		InputPath:   *inputPath,
+		OutputPath:  *outputPath,
+		Concurrency: *concurrency,
 	}, nil
 }
 
@@ -52,7 +59,7 @@ func readInput(path string) (string, error) {
 }
 
 // writeOutput writes the output to the specified path or stdout if the path is empty.
-func writeOutput(path, data string) (err error) {
+func writeOutput(path string, export karakeep.Export) (err error) {
 	// NOTE: Use bufio.Writer here if you are making many small writes and want to avoid
 	// overhead of frequent syscalls. However, we are writing only once in this code.
 	// - https://pkg.go.dev/bufio#Writer
@@ -72,8 +79,9 @@ func writeOutput(path, data string) (err error) {
 		w = f
 	}
 
-	_, err = io.WriteString(w, data)
-	return err
+	encoder := json.NewEncoder(w)
+	encoder.SetIndent("", "  ") // pretty print
+	return encoder.Encode(export)
 }
 
 // Run executes the CLI with the provided arguments.
@@ -110,17 +118,16 @@ func Run() error {
 		return fmt.Errorf("parsing input: %w", err)
 	}
 
-	// TODO: do something
-	_ = hackernews.NewClient()
+	client := hackernews.NewClient()
+	conv := converter.New(
+		converter.WithFetcher(client),
+		converter.WithConcurrency(cfg.Concurrency),
+	)
 
-	// NOTE: Go strings are immutable, so using string concatenation in a loop
-	// can lead to excessive memory allocations (a hint from `go vet`).
-	// - https://stackoverflow.com/questions/1760757/how-to-efficiently-concatenate-strings-in-go/47798475#47798475.
-	var output strings.Builder
-	for _, bm := range bookmarks {
-		fmt.Fprintf(&output, "%d %d\n", bm.ID, bm.Timestamp)
-	}
-	if err := writeOutput(cfg.OutputPath, output.String()); err != nil {
+	items := conv.FetchItems(bookmarks)
+	export := conv.Convert(bookmarks, items)
+
+	if err := writeOutput(cfg.OutputPath, export); err != nil {
 		return fmt.Errorf("writing output: %w", err)
 	}
 

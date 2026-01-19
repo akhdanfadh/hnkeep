@@ -1,0 +1,34 @@
+{
+  "bookmarks": [
+    {
+      "createdAt": 1688536396,
+      "title": "Stephen Hawking has died",
+      "tags": [],
+      "content": {
+        "type": "link",
+        "url": "http://www.bbc.com/news/uk-43396008"
+      },
+      "note": null
+    },
+    {
+      "createdAt": 1748370394,
+      "title": "Ask HN: I’m an FCC Commissioner proposing regulation of IoT security updates",
+      "tags": [],
+      "content": {
+        "type": "link",
+        "url": "https://news.ycombinator.com/item?id=37392676"
+      },
+      "note": null
+    },
+    {
+      "createdAt": 1768524091,
+      "title": "Show HN: This up votes itself",
+      "tags": [],
+      "content": {
+        "type": "link",
+        "url": "http://news.ycombinator.com/vote?for=3742902\u0026dir=up\u0026whence=%6e%65%77%65%73%74"
+      },
+      "note": null
+    }
+  ]
+}

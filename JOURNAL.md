@@ -27,3 +27,18 @@ func Run() error {
 ````
 
 ---
+
+```go
+// internal/cli/cli.go (7cc4f161745b190895323a5033973e8130e6d9f3)
+func Run() error {
+  ...
+ // NOTE: Go strings are immutable, so using string concatenation in a loop
+ // can lead to excessive memory allocations (a hint from `go vet`).
+ // - https://stackoverflow.com/questions/1760757/how-to-efficiently-concatenate-strings-in-go/47798475#47798475.
+ var output strings.Builder
+ for _, bm := range bookmarks {
+  fmt.Fprintf(&output, "%d %d\n", bm.ID, bm.Timestamp)
+ }
+  ...
+}
+```

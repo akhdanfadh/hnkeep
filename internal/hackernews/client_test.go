@@ -93,6 +93,7 @@ func TestClient_GetItem(t *testing.T) {
 
 			// custom client
 			client := NewClient(
+				WithHTTPClient(server.Client()),
 				WithBaseURL(server.URL),
 				WithRetries(1),
 				WithRetryWait(0),

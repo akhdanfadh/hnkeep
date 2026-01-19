@@ -65,6 +65,13 @@ func WithRetryWait(d time.Duration) ClientOption {
 	}
 }
 
+// WithHTTPClient sets a custom HTTP client.
+func WithHTTPClient(client *http.Client) ClientOption {
+	return func(c *Client) {
+		c.httpClient = client
+	}
+}
+
 // GetItem fetches an item by its ID with retry logic.
 func (c *Client) GetItem(id int) (*Item, error) {
 	url := fmt.Sprintf("%s/item/%d.json", c.baseURL, id)

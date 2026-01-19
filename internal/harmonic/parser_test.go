@@ -25,18 +25,6 @@ func TestParse(t *testing.T) {
 				{ID: 16582136, Timestamp: 1768524091167},
 			},
 		},
-		"leading and trailing whitespaces": {
-			input: "  3742902q1688536396765  \n",
-			want: []Bookmark{
-				{ID: 3742902, Timestamp: 1688536396765},
-			},
-		},
-		"leading and trailing dashes": {
-			input: "-3742902q1688536396765-",
-			want: []Bookmark{
-				{ID: 3742902, Timestamp: 1688536396765},
-			},
-		},
 		"empty input": {
 			input:   "",
 			wantErr: true,

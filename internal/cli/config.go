@@ -11,6 +11,7 @@ type Config struct {
 	InputPath    string
 	OutputPath   string
 	Quiet        bool
+	DryRun       bool
 	Concurrency  int
 	Tags         []string
 	NoteTemplate string
@@ -38,6 +39,9 @@ func parseFlags() *Config {
 	flag.BoolVar(quiet, "q", false,
 		"alias for -quiet")
 
+	dryRun := flag.Bool("dry-run", false,
+		"Preview conversion without API calls")
+
 	concurrency := flag.Int("concurrency", 5,
 		"Number of concurrent Hacker News fetches.")
 	flag.IntVar(concurrency, "c", 5,
@@ -63,6 +67,16 @@ func parseFlags() *Config {
 
 	flag.Parse()
 
+	// parse tags
+	var tagsSlice []string
+	if *tags != "" {
+		for split := range strings.SplitSeq(*tags, ",") {
+			if tag := strings.TrimSpace(split); tag != "" {
+				tagsSlice = append(tagsSlice, tag)
+			}
+		}
+	}
+
 	// resolve cache dir
 	resolvedCacheDir := *cacheDir
 	if *noCache {
@@ -73,25 +87,13 @@ func parseFlags() *Config {
 		InputPath:    *inputPath,
 		OutputPath:   *outputPath,
 		Quiet:        *quiet,
+		DryRun:       *dryRun,
 		Concurrency:  *concurrency,
-		Tags:         parseTags(*tags),
+		Tags:         tagsSlice,
 		NoteTemplate: *noteTemplate,
 		CacheDir:     resolvedCacheDir,
 		ClearCache:   *clearCache,
 	}
-}
-
-// parseTags parses a comma-separated string of tags into a slice of strings.
-func parseTags(tags string) []string {
-	var slice []string
-	if tags != "" {
-		for split := range strings.SplitSeq(tags, ",") {
-			if tag := strings.TrimSpace(split); tag != "" {
-				slice = append(slice, tag)
-			}
-		}
-	}
-	return slice
 }
 
 // getDefaultCacheDir returns the default cache directory following platform conventions.

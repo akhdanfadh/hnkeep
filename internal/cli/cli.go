@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"time"
 
 	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
@@ -89,6 +90,12 @@ func Run() error {
 		return fmt.Errorf("parsing input: %w", err)
 	}
 
+	// dry run mode: give stats on the input and exit
+	if cfg.DryRun {
+		printDryRunMode(bookmarks)
+		return nil
+	}
+
 	logger := NewLogger(os.Stderr, cfg.Quiet)
 	client := hackernews.NewClient()
 	var fetcher converter.ItemFetcher = client
@@ -123,4 +130,38 @@ func Run() error {
 	}
 
 	return nil
+}
+
+// printDryRunMode prints statistics about the bookmarks without making any API calls.
+func printDryRunMode(bookmarks []harmonic.Bookmark) {
+	fmt.Fprintf(os.Stderr, "=== Dry Run ===\n")
+	fmt.Fprintf(os.Stderr, "Bookmarks\t: %d\n", len(bookmarks))
+	if len(bookmarks) == 0 {
+		return
+	}
+
+	// find date and id range
+	minTS, maxTS := bookmarks[0].Timestamp, bookmarks[0].Timestamp
+	minID, maxID := bookmarks[0].ID, bookmarks[0].ID
+	for _, b := range bookmarks {
+		if b.Timestamp < minTS {
+			minTS = b.Timestamp
+		}
+		if b.Timestamp > maxTS {
+			maxTS = b.Timestamp
+		}
+		if b.ID < minID {
+			minID = b.ID
+		}
+		if b.ID > maxID {
+			maxID = b.ID
+		}
+	}
+
+	oldest := time.Unix(minTS/1000, 0).UTC().Format("2006-01-02 15:04:05")
+	newest := time.Unix(maxTS/1000, 0).UTC().Format("2006-01-02 15:04:05")
+
+	fmt.Fprintf(os.Stderr, "Earliest entry\t: %d at %s UTC\n", minID, oldest)
+	fmt.Fprintf(os.Stderr, "Latest entry\t: %d at %s UTC\n", maxID, newest)
+	fmt.Fprintf(os.Stderr, "\nNo API calls made.\n")
 }

@@ -36,6 +36,7 @@ cat harmonic-export.txt | hnkeep > karakeep-import.json
 | `-i, --input`       | stdin                                          | Input file (Harmonic export)                       |
 | `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                        |
 | `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only) |
+| `--dry-run`         |                                                | Preview conversion without HN API calls            |
 | `-c, --concurrency` | 5                                              | Number of concurrent HN API requests               |
 | `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks             |
 | `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                   |

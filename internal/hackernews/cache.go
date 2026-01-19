@@ -20,21 +20,51 @@ type cacheEntry struct {
 	Error string `json:"error,omitempty"`
 }
 
+// Logger defines the interface for logging messages.
+type Logger interface {
+	Info(format string, args ...any)
+	Warn(format string, args ...any)
+	Error(format string, args ...any)
+}
+
+// noopLogger is a Logger implementation that does nothing.
+type noopLogger struct{}
+
+func (noopLogger) Info(string, ...any)  {}
+func (noopLogger) Warn(string, ...any)  {}
+func (noopLogger) Error(string, ...any) {}
+
 // CachedClient wraps a Client with caching capabilities.
 type CachedClient struct {
 	client   *Client
 	cacheDir string
+	logger   Logger
+}
+
+// CacheOption configures the CachedClient.
+type CacheOption func(*CachedClient)
+
+// WithLogger sets a custom Logger for the CachedClient.
+func WithLogger(l Logger) CacheOption {
+	return func(c *CachedClient) {
+		c.logger = l
+	}
 }
 
 // NewCachedClient creates a client that caches responses in the given directory.
-func NewCachedClient(client *Client, cacheDir string) (*CachedClient, error) {
+func NewCachedClient(client *Client, cacheDir string, opts ...CacheOption) (*CachedClient, error) {
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		return nil, err
 	}
-	return &CachedClient{
+	c := &CachedClient{
 		client:   client,
 		cacheDir: cacheDir,
-	}, nil
+		logger:   &noopLogger{},
+	}
+	for _, opt := range opts {
+		opt(c)
+	}
+	return c, nil
 }
 
 // GetItem retrieves an item by ID, using the cache if available.
@@ -46,9 +76,11 @@ func (c *CachedClient) GetItem(id int) (*Item, error) {
 	// try read from cache (includes negative cache hits)
 	item, err := c.readCache(id)
 	if err == nil {
+		c.logger.Info("cache hit for item %d", id)
 		return item, nil
 	}
 	if errors.Is(err, ErrItemDeleted) || errors.Is(err, ErrItemDead) {
+		c.logger.Info("cache hit for item %d (negative)", id)
 		return nil, err // cached error state
 	}
 

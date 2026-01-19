@@ -1,9 +1,10 @@
 package converter
 
 import (
-	"bytes"
 	"errors"
+	"fmt"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
@@ -28,6 +29,36 @@ func (m *mockFetcher) GetItem(id int) (*hackernews.Item, error) {
 		return item, nil
 	}
 	return nil, hackernews.ErrItemNotFound
+}
+
+// mockLogger is a mock implementation of Logger for testing.
+type mockLogger struct {
+	mu       sync.Mutex
+	messages []string
+}
+
+func (m *mockLogger) Info(format string, args ...any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.messages = append(m.messages, "[INFO] "+fmt.Sprintf(format, args...))
+}
+
+func (m *mockLogger) Warn(format string, args ...any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.messages = append(m.messages, "[WARN] "+fmt.Sprintf(format, args...))
+}
+
+func (m *mockLogger) Error(format string, args ...any) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.messages = append(m.messages, "[ERROR] "+fmt.Sprintf(format, args...))
+}
+
+func (m *mockLogger) Output() string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return strings.Join(m.messages, "\n")
 }
 
 func TestFetchItems(t *testing.T) {
@@ -101,9 +132,9 @@ func TestFetchItems(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			var buf bytes.Buffer
+			logger := &mockLogger{}
 			mock := &mockFetcher{items: tc.items, errors: tc.errors}
-			c := New(WithFetcher(mock), WithConcurrency(2), WithOutput(&buf))
+			c := New(WithFetcher(mock), WithConcurrency(2), WithLogger(logger))
 
 			got := c.FetchItems(tc.bookmarks)
 
@@ -125,7 +156,7 @@ func TestFetchItems(t *testing.T) {
 			}
 
 			// check warnings
-			output := buf.String()
+			output := logger.Output()
 			for _, warning := range tc.wantWarnings {
 				if !strings.Contains(output, warning) {
 					t.Errorf("FetchItems() output missing warning %q, got %q", warning, output)

@@ -10,6 +10,7 @@ import (
 type Config struct {
 	InputPath    string
 	OutputPath   string
+	Quiet        bool
 	Concurrency  int
 	Tags         []string
 	NoteTemplate string
@@ -26,10 +27,16 @@ func parseFlags() *Config {
 		"Input file path, e.g., harmonic-export.txt (default to stdin)")
 	flag.StringVar(inputPath, "i", "",
 		"alias for -input (default stdin)")
+
 	outputPath := flag.String("output", "",
 		"Output file path, e.g.., karakeep-import.json (default stdout)")
 	flag.StringVar(outputPath, "o", "",
 		"alias for -output (default stdout)")
+
+	quiet := flag.Bool("quiet", false,
+		"Suppress informational messages (warnings and errors are always shown)")
+	flag.BoolVar(quiet, "q", false,
+		"alias for -quiet")
 
 	concurrency := flag.Int("concurrency", 5,
 		"Number of concurrent Hacker News fetches.")
@@ -65,6 +72,7 @@ func parseFlags() *Config {
 	return &Config{
 		InputPath:    *inputPath,
 		OutputPath:   *outputPath,
+		Quiet:        *quiet,
 		Concurrency:  *concurrency,
 		Tags:         parseTags(*tags),
 		NoteTemplate: *noteTemplate,

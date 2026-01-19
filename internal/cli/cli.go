@@ -89,10 +89,12 @@ func Run() error {
 		return fmt.Errorf("parsing input: %w", err)
 	}
 
+	logger := NewLogger(os.Stderr, cfg.Quiet)
 	client := hackernews.NewClient()
 	var fetcher converter.ItemFetcher = client
+
 	if cfg.CacheDir != "" {
-		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir)
+		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir, hackernews.WithLogger(logger))
 		if err != nil {
 			return fmt.Errorf("creating cached client: %w", err)
 		}
@@ -107,6 +109,7 @@ func Run() error {
 	conv := converter.New(
 		converter.WithFetcher(fetcher),
 		converter.WithConcurrency(cfg.Concurrency),
+		converter.WithLogger(logger),
 	)
 
 	items := conv.FetchItems(bookmarks)

@@ -2,12 +2,10 @@ package converter
 
 import (
 	"errors"
-	"fmt"
-	"io"
-	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
@@ -26,6 +24,13 @@ type ItemFetcher interface {
 	GetItem(id int) (*hackernews.Item, error)
 }
 
+// Logger defines the interface for logging messages.
+type Logger interface {
+	Info(format string, args ...any)
+	Warn(format string, args ...any)
+	Error(format string, args ...any)
+}
+
 // NOTE: Go does not support constant arrays, maps, or slices.
 // - https://blog.boot.dev/golang/golang-constant-maps-slices
 // - https://stackoverflow.com/questions/13137463/declare-a-constant-array
@@ -37,16 +42,22 @@ func getDefaultFetcher() ItemFetcher {
 	return hackernews.NewClient()
 }
 
-// getDefaultOutput returns the default output file (stderr).
-func getDefaultOutput() io.Writer {
-	return os.Stderr
-}
+// noopLogger is a Logger implementation that does nothing.
+// It silently discards all messages without writing them anywhere.
+type noopLogger struct{}
+
+// NOTE: This is a common pattern in Go called the "null object pattern",
+// i.e., providing a valid, do-nothing implementation instead of using nil.
+
+func (noopLogger) Info(string, ...any)  {}
+func (noopLogger) Warn(string, ...any)  {}
+func (noopLogger) Error(string, ...any) {}
 
 // Converter represents the conversion pipeline orchestrator.
 type Converter struct {
 	fetcher     ItemFetcher
 	concurrency int
-	output      io.Writer // for status/warning messages
+	logger      Logger
 }
 
 // Option configures the Converter.
@@ -57,7 +68,7 @@ func New(opts ...Option) *Converter {
 	c := &Converter{
 		fetcher:     getDefaultFetcher(),
 		concurrency: defaultConcurrency,
-		output:      getDefaultOutput(),
+		logger:      &noopLogger{},
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -79,10 +90,10 @@ func WithConcurrency(n int) Option {
 	}
 }
 
-// WithOutput sets the output writer for status/warning messages.
-func WithOutput(w io.Writer) Option {
+// WithLogger sets the logger for info/warn/error messages.
+func WithLogger(l Logger) Option {
 	return func(c *Converter) {
-		c.output = w
+		c.logger = l
 	}
 }
 
@@ -95,6 +106,9 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 	}
 	results := make(chan result, len(bookmarks))
 	semaphore := make(chan struct{}, c.concurrency)
+
+	total := len(bookmarks)
+	var counter atomic.Int32 // for logging progress
 
 	// fetch items with semaphore
 	// NOTE: Having read "Grokking Concurrency" really helped me understand this concurrency pattern.
@@ -111,6 +125,8 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 			defer func() { <-semaphore }() // release
 
 			item, err := c.fetcher.GetItem(bookmark.ID)
+			n := counter.Add(1)
+			c.logger.Info("fetched %d/%d (ID: %d)", n, total, bookmark.ID)
 			results <- result{bookmark: bookmark, item: item, err: err}
 		}(bm)
 	}
@@ -125,10 +141,9 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 	for r := range results {
 		if r.err != nil {
 			if errors.Is(r.err, hackernews.ErrItemNotFound) {
-				// Fprintf error itself is non-critical, ignore
-				_, _ = fmt.Fprintf(c.output, "warning: item %d not found, skipping\n", r.bookmark.ID)
+				c.logger.Warn("item %d not found, skipping", r.bookmark.ID)
 			} else {
-				_, _ = fmt.Fprintf(c.output, "warning: failed to fetch item %d: %v, skipping\n", r.bookmark.ID, r.err)
+				c.logger.Warn("failed to fetch item %d: %v, skipping", r.bookmark.ID, r.err)
 			}
 			continue
 		}

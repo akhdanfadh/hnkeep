@@ -31,16 +31,17 @@ hnkeep -i harmonic-export.txt -o karakeep-import.json
 cat harmonic-export.txt | hnkeep > karakeep-import.json
 ```
 
-| Flag                | Default                                        | Description                            |
-| ------------------- | ---------------------------------------------- | -------------------------------------- |
-| `-i, --input`       | stdin                                          | Input file (Harmonic export)           |
-| `-o, --output`      | stdout                                         | Output file (Karakeep JSON)            |
-| `-c, --concurrency` | 5                                              | Number of concurrent HN API requests   |
-| `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks |
-| `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field       |
-| `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory       |
-| `--no-cache`        |                                                | Disable caching of HN API responses    |
-| `--clear-cache`     |                                                | Clear the cache before running         |
+| Flag                | Default                                        | Description                                        |
+| ------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| `-i, --input`       | stdin                                          | Input file (Harmonic export)                       |
+| `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                        |
+| `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only) |
+| `-c, --concurrency` | 5                                              | Number of concurrent HN API requests               |
+| `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks             |
+| `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                   |
+| `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                   |
+| `--no-cache`        |                                                | Disable caching of HN API responses                |
+| `--clear-cache`     |                                                | Clear the cache before running                     |
 
 For note template, the following variables are available (use `--note-template ""` to disable notes entirely):
 

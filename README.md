@@ -37,9 +37,22 @@ cat harmonic-export.txt | hnkeep > karakeep-import.json
 | `-o, --output`      | stdout                                         | Output file (Karakeep JSON)            |
 | `-c, --concurrency` | 5                                              | Number of concurrent HN API requests   |
 | `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks |
+| `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field       |
 | `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory       |
 | `--no-cache`        |                                                | Disable caching of HN API responses    |
 | `--clear-cache`     |                                                | Clear the cache before running         |
+
+For note template, the following variables are available (use `--note-template ""` to disable notes entirely):
+
+| Variable        | Description                                                    |
+| --------------- | -------------------------------------------------------------- |
+| `{{smart_url}}` | HN discussion URL if item has external link, empty otherwise   |
+| `{{item_url}}`  | Item's external URL (empty for text posts like Ask HN)         |
+| `{{hn_url}}`    | HN discussion URL (`https://news.ycombinator.com/item?id=...`) |
+| `{{id}}`        | HN item ID                                                     |
+| `{{title}}`     | Item title                                                     |
+| `{{author}}`    | Author username                                                |
+| `{{date}}`      | Post date (`YYYY-MM-DD`)                                       |
 
 ## Contributing
 

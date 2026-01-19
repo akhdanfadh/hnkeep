@@ -111,7 +111,8 @@ func Run() error {
 
 	items := conv.FetchItems(bookmarks)
 	export := conv.Convert(bookmarks, items, converter.Options{
-		Tags: cfg.Tags,
+		Tags:         cfg.Tags,
+		NoteTemplate: cfg.NoteTemplate,
 	})
 
 	if err := writeOutput(cfg.OutputPath, export); err != nil {

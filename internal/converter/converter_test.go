@@ -11,6 +11,9 @@ import (
 	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
 
+// ptr returns a pointer to the given string (helper for test data).
+func ptr(s string) *string { return &s }
+
 // mockFetcher is a mock implementation of ItemFetcher for testing.
 type mockFetcher struct {
 	items  map[int]*hackernews.Item
@@ -251,6 +254,132 @@ func TestConvert(t *testing.T) {
 				},
 			},
 		},
+		"note template empty string": {
+			bookmarks: []harmonic.Bookmark{
+				{ID: 1, Timestamp: 1000000},
+			},
+			items: map[int]*hackernews.Item{
+				1: {ID: 1, Title: "Story", URL: "https://example.com"},
+			},
+			opts: Options{NoteTemplate: ""},
+			want: karakeep.Export{
+				Bookmarks: []karakeep.Bookmark{
+					{
+						CreatedAt: 1000,
+						Title:     ptr("Story"),
+						Note:      nil, // no note when template is empty
+						Content: &karakeep.BookmarkContent{
+							Link: &karakeep.LinkContent{
+								Type: karakeep.BookmarkTypeLink,
+								URL:  "https://example.com",
+							},
+						},
+					},
+				},
+			},
+		},
+		"note template smart_url with external URL": {
+			bookmarks: []harmonic.Bookmark{
+				{ID: 42, Timestamp: 1000000},
+			},
+			items: map[int]*hackernews.Item{
+				42: {ID: 42, Title: "Story", URL: "https://example.com"},
+			},
+			opts: Options{NoteTemplate: "{{smart_url}}"},
+			want: karakeep.Export{
+				Bookmarks: []karakeep.Bookmark{
+					{
+						CreatedAt: 1000,
+						Title:     ptr("Story"),
+						Note:      ptr("https://news.ycombinator.com/item?id=42"),
+						Content: &karakeep.BookmarkContent{
+							Link: &karakeep.LinkContent{
+								Type: karakeep.BookmarkTypeLink,
+								URL:  "https://example.com",
+							},
+						},
+					},
+				},
+			},
+		},
+		"note template smart_url without external URL": {
+			bookmarks: []harmonic.Bookmark{
+				{ID: 99, Timestamp: 1000000},
+			},
+			items: map[int]*hackernews.Item{
+				99: {ID: 99, Title: "Ask HN: Something", URL: ""}, // no external URL
+			},
+			opts: Options{NoteTemplate: "{{smart_url}}"},
+			want: karakeep.Export{
+				Bookmarks: []karakeep.Bookmark{
+					{
+						CreatedAt: 1000,
+						Title:     ptr("Ask HN: Something"),
+						Note:      nil, // smart_url is empty, so note is not set
+						Content: &karakeep.BookmarkContent{
+							Link: &karakeep.LinkContent{
+								Type: karakeep.BookmarkTypeLink,
+								URL:  "https://news.ycombinator.com/item?id=99",
+							},
+						},
+					},
+				},
+			},
+		},
+		"note template hn_url without external URL": {
+			bookmarks: []harmonic.Bookmark{
+				{ID: 88, Timestamp: 1000000},
+			},
+			items: map[int]*hackernews.Item{
+				88: {ID: 88, Title: "Ask HN: Question", URL: ""}, // no external URL
+			},
+			opts: Options{NoteTemplate: "{{hn_url}}"},
+			want: karakeep.Export{
+				Bookmarks: []karakeep.Bookmark{
+					{
+						CreatedAt: 1000,
+						Title:     ptr("Ask HN: Question"),
+						Note:      ptr("https://news.ycombinator.com/item?id=88"), // hn_url always works
+						Content: &karakeep.BookmarkContent{
+							Link: &karakeep.LinkContent{
+								Type: karakeep.BookmarkTypeLink,
+								URL:  "https://news.ycombinator.com/item?id=88",
+							},
+						},
+					},
+				},
+			},
+		},
+		"note template with multiple variables": {
+			bookmarks: []harmonic.Bookmark{
+				{ID: 123, Timestamp: 1000000},
+			},
+			items: map[int]*hackernews.Item{
+				123: {
+					ID:    123,
+					Title: "Test Title",
+					URL:   "https://example.com",
+					By:    "testuser",
+					Time:  1609459200, // 2021-01-01 00:00:00 UTC
+				},
+			},
+			opts: Options{NoteTemplate: "{{title}} by {{author}} ({{date}}) - ID:{{id}} {{item_url}}"},
+			want: karakeep.Export{
+				Bookmarks: []karakeep.Bookmark{
+					{
+						CreatedAt: 1000,
+						Title:     ptr("Test Title"),
+						Note:      ptr("Test Title by testuser (2021-01-01) - ID:123 https://example.com"),
+						Content: &karakeep.BookmarkContent{
+							Link: &karakeep.LinkContent{
+								Type: karakeep.BookmarkTypeLink,
+								URL:  "https://example.com",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {
@@ -286,6 +415,13 @@ func TestConvert(t *testing.T) {
 							t.Errorf("Convert()[%d].Tags[%d] = %q, want %q", i, j, gotBm.Tags[j], wantTag)
 						}
 					}
+				}
+
+				// check note
+				if (gotBm.Note == nil) != (wantBm.Note == nil) {
+					t.Errorf("Convert()[%d].Note nil mismatch: got nil=%v, want nil=%v", i, gotBm.Note == nil, wantBm.Note == nil)
+				} else if gotBm.Note != nil && *gotBm.Note != *wantBm.Note {
+					t.Errorf("Convert()[%d].Note = %q, want %q", i, *gotBm.Note, *wantBm.Note)
 				}
 
 				if (gotBm.Content == nil) != (wantBm.Content == nil) {

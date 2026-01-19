@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
@@ -14,7 +17,8 @@ import (
 
 // Options represents additional options for the conversion process.
 type Options struct {
-	Tags []string // Tags to apply to all bookmarks
+	Tags         []string // Tags to apply to all bookmarks
+	NoteTemplate string   // Template for note field (empty = no note)
 }
 
 // ItemFetcher defines the interface for fetching Hacker News items.
@@ -162,6 +166,28 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 				},
 			},
 			Tags: opts.Tags,
+		}
+
+		// render note template
+		if opts.NoteTemplate != "" {
+			smartURL := hackernews.DiscussionURL(item.ID)
+			if item.URL == "" {
+				smartURL = ""
+			}
+
+			note := strings.NewReplacer(
+				"{{smart_url}}", smartURL,
+				"{{item_url}}", item.URL,
+				"{{hn_url}}", hackernews.DiscussionURL(item.ID),
+				"{{id}}", strconv.Itoa(item.ID),
+				"{{title}}", item.Title,
+				"{{author}}", item.By,
+				"{{date}}", time.Unix(item.Time, 0).Format("2006-01-02"),
+			).Replace(opts.NoteTemplate)
+
+			if note != "" { // avoid empty rendered note
+				kb.Note = &note
+			}
 		}
 
 		export.Bookmarks = append(export.Bookmarks, kb)

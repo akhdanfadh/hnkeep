@@ -84,7 +84,7 @@ func parseFlags() *Config {
 // parseTags parses a comma-separated string of tags into a slice of strings.
 func parseTags(tags string) []string {
 	var slice []string
-	if tags == "" {
+	if tags != "" {
 		for split := range strings.SplitSeq(tags, ",") {
 			if tag := strings.TrimSpace(split); tag != "" {
 				slice = append(slice, tag)

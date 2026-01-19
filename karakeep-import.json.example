@@ -10,7 +10,7 @@
         "type": "link",
         "url": "http://www.bbc.com/news/uk-43396008"
       },
-      "note": null
+      "note": "https://news.ycombinator.com/item?id=16582136"
     },
     {
       "createdAt": 1748370394,
@@ -34,7 +34,7 @@
         "type": "link",
         "url": "http://news.ycombinator.com/vote?for=3742902\u0026dir=up\u0026whence=%6e%65%77%65%73%74"
       },
-      "note": null
+      "note": "https://news.ycombinator.com/item?id=3742902"
     }
   ]
 }

@@ -145,6 +145,7 @@ func TestConvert(t *testing.T) {
 	tests := map[string]struct {
 		bookmarks []harmonic.Bookmark
 		items     map[int]*hackernews.Item
+		opts      Options
 		want      karakeep.Export
 	}{
 		"single bookmark with URL": {
@@ -226,12 +227,36 @@ func TestConvert(t *testing.T) {
 				},
 			},
 		},
+		"bookmarks with tags": {
+			bookmarks: []harmonic.Bookmark{
+				{ID: 1, Timestamp: 1000000},
+			},
+			items: map[int]*hackernews.Item{
+				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
+			},
+			opts: Options{Tags: []string{"hn", "imported"}},
+			want: karakeep.Export{
+				Bookmarks: []karakeep.Bookmark{
+					{
+						CreatedAt: 1000,
+						Title:     &title1,
+						Tags:      []string{"hn", "imported"},
+						Content: &karakeep.BookmarkContent{
+							Link: &karakeep.LinkContent{
+								Type: karakeep.BookmarkTypeLink,
+								URL:  "https://example.com",
+							},
+						},
+					},
+				},
+			},
+		},
 	}
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			c := New()
-			got := c.Convert(tc.bookmarks, tc.items)
+			got := c.Convert(tc.bookmarks, tc.items, tc.opts)
 
 			// check bookmarks count
 			if len(got.Bookmarks) != len(tc.want.Bookmarks) {
@@ -250,6 +275,17 @@ func TestConvert(t *testing.T) {
 					t.Errorf("Convert()[%d].Title nil mismatch", i)
 				} else if gotBm.Title != nil && *gotBm.Title != *wantBm.Title {
 					t.Errorf("Convert()[%d].Title = %q, want %q", i, *gotBm.Title, *wantBm.Title)
+				}
+
+				// check tags
+				if len(gotBm.Tags) != len(wantBm.Tags) {
+					t.Errorf("Convert()[%d].Tags length = %d, want %d", i, len(gotBm.Tags), len(wantBm.Tags))
+				} else {
+					for j, wantTag := range wantBm.Tags {
+						if gotBm.Tags[j] != wantTag {
+							t.Errorf("Convert()[%d].Tags[%d] = %q, want %q", i, j, gotBm.Tags[j], wantTag)
+						}
+					}
 				}
 
 				if (gotBm.Content == nil) != (wantBm.Content == nil) {

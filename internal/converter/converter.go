@@ -12,6 +12,11 @@ import (
 	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
 
+// Options represents additional options for the conversion process.
+type Options struct {
+	Tags []string // Tags to apply to all bookmarks
+}
+
 // ItemFetcher defines the interface for fetching Hacker News items.
 type ItemFetcher interface {
 	GetItem(id int) (*hackernews.Item, error)
@@ -130,7 +135,7 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 }
 
 // Convert converts the fetched items and bookmarks into Karakeep export format.
-func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hackernews.Item) karakeep.Export {
+func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hackernews.Item, opts Options) karakeep.Export {
 	var export karakeep.Export
 	for _, bm := range bookmarks {
 		item, ok := items[bm.ID]
@@ -156,6 +161,7 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 					URL:  url,
 				},
 			},
+			Tags: opts.Tags,
 		}
 
 		export.Bookmarks = append(export.Bookmarks, kb)

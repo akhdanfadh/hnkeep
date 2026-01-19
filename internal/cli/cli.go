@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
@@ -17,26 +18,43 @@ type Config struct {
 	InputPath   string
 	OutputPath  string
 	Concurrency int
+	Tags        []string
 }
 
 // parseFlags parses command-line flags and returns a Config struct.
-func parseFlags() (*Config, error) {
+func parseFlags() *Config {
 	// NOTE: go flag package does not support alias natively.
 	// - https://github.com/golang/go/issues/35761
-	inputPath := flag.String("input", "", "Input file path (Harmonic TXT export). Default to stdin.")
-	flag.StringVar(inputPath, "i", "", "alias for -input")
-	outputPath := flag.String("output", "", "Output file path (Karakeep JSON import). Default to stdout.")
-	flag.StringVar(outputPath, "o", "", "alias for -output")
+
+	inputPath := flag.String("input", "", "Input file path, e.g., harmonic-export.txt (default to stdin)")
+	flag.StringVar(inputPath, "i", "", "alias for -input (default stdin)")
+
+	outputPath := flag.String("output", "", "Output file path, e.g.., karakeep-import.json (default stdout)")
+	flag.StringVar(outputPath, "o", "", "alias for -output (default stdout)")
 
 	concurrency := flag.Int("concurrency", 5, "Number of concurrent Hacker News fetches.")
 	flag.IntVar(concurrency, "c", 5, "alias for -concurrency")
 
+	tags := flag.String("tags", "src:hackernews", "Comma-separated list of tags to add to all imported bookmarks")
+	flag.StringVar(tags, "t", "src:hackernews", "alias for -tags")
+
 	flag.Parse()
+
+	var tagsSlice []string
+	if *tags != "" {
+		for split := range strings.SplitSeq(*tags, ",") {
+			if tag := strings.TrimSpace(split); tag != "" {
+				tagsSlice = append(tagsSlice, tag)
+			}
+		}
+	}
+
 	return &Config{
 		InputPath:   *inputPath,
 		OutputPath:  *outputPath,
 		Concurrency: *concurrency,
-	}, nil
+		Tags:        tagsSlice,
+	}
 }
 
 // readInput reads the input from the specified path or stdin if the path is empty.
@@ -86,10 +104,7 @@ func writeOutput(path string, export karakeep.Export) (err error) {
 
 // Run executes the CLI with the provided arguments.
 func Run() error {
-	cfg, err := parseFlags()
-	if err != nil {
-		return err
-	}
+	cfg := parseFlags()
 
 	// if no input data is given and stdin is a terminal, show usage and exit
 	// NOTE: Without this check, it "feels" like the program is hanging. That is actually a
@@ -125,7 +140,9 @@ func Run() error {
 	)
 
 	items := conv.FetchItems(bookmarks)
-	export := conv.Convert(bookmarks, items)
+	export := conv.Convert(bookmarks, items, converter.Options{
+		Tags: cfg.Tags,
+	})
 
 	if err := writeOutput(cfg.OutputPath, export); err != nil {
 		return fmt.Errorf("writing output: %w", err)

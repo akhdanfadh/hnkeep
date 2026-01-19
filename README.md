@@ -31,11 +31,12 @@ hnkeep -i harmonic-export.txt -o karakeep-import.json
 cat harmonic-export.txt | hnkeep > karakeep-import.json
 ```
 
-| Flag                | Default | Description                          |
-| ------------------- | ------- | ------------------------------------ |
-| `-i, --input`       | stdin   | Input file (Harmonic export)         |
-| `-o, --output`      | stdout  | Output file (Karakeep JSON)          |
-| `-c, --concurrency` | 5       | Number of concurrent HN API requests |
+| Flag                | Default          | Description                            |
+| ------------------- | ---------------- | -------------------------------------- |
+| `-i, --input`       | stdin            | Input file (Harmonic export)           |
+| `-o, --output`      | stdout           | Output file (Karakeep JSON)            |
+| `-c, --concurrency` | 5                | Number of concurrent HN API requests   |
+| `-t, --tags`        | "src:hackernews" | Comma-separated tags for all bookmarks |
 
 ## Contributing
 

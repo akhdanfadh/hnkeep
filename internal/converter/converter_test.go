@@ -184,7 +184,7 @@ func TestConvert(t *testing.T) {
 	}{
 		"single bookmark with URL": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 1, Timestamp: 1000000}, // ms
+				{ID: 1, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
@@ -192,7 +192,7 @@ func TestConvert(t *testing.T) {
 			want: karakeep.Export{
 				Bookmarks: []karakeep.Bookmark{
 					{
-						CreatedAt: 1000, // s
+						CreatedAt: 1000,
 						Title:     &title1,
 						Content: &karakeep.BookmarkContent{
 							Link: &karakeep.LinkContent{
@@ -206,7 +206,7 @@ func TestConvert(t *testing.T) {
 		},
 		"single bookmark without URL (discussion link)": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 123, Timestamp: 2000000},
+				{ID: 123, Timestamp: 2000},
 			},
 			items: map[int]*hackernews.Item{
 				123: {ID: 123, Title: "Story without URL", URL: ""},
@@ -228,9 +228,9 @@ func TestConvert(t *testing.T) {
 		},
 		"missing item skipped": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 1, Timestamp: 1000000},
-				{ID: 999, Timestamp: 2000000}, // not in items
-				{ID: 2, Timestamp: 3000000},
+				{ID: 1, Timestamp: 1000},
+				{ID: 999, Timestamp: 2000}, // not in items
+				{ID: 2, Timestamp: 3000},
 			},
 			items: map[int]*hackernews.Item{
 				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
@@ -263,7 +263,7 @@ func TestConvert(t *testing.T) {
 		},
 		"bookmarks with tags": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 1, Timestamp: 1000000},
+				{ID: 1, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
@@ -287,7 +287,7 @@ func TestConvert(t *testing.T) {
 		},
 		"note template empty string": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 1, Timestamp: 1000000},
+				{ID: 1, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				1: {ID: 1, Title: "Story", URL: "https://example.com"},
@@ -311,7 +311,7 @@ func TestConvert(t *testing.T) {
 		},
 		"note template smart_url with external URL": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 42, Timestamp: 1000000},
+				{ID: 42, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				42: {ID: 42, Title: "Story", URL: "https://example.com"},
@@ -335,7 +335,7 @@ func TestConvert(t *testing.T) {
 		},
 		"note template smart_url without external URL": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 99, Timestamp: 1000000},
+				{ID: 99, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				99: {ID: 99, Title: "Ask HN: Something", URL: ""}, // no external URL
@@ -359,7 +359,7 @@ func TestConvert(t *testing.T) {
 		},
 		"note template hn_url without external URL": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 88, Timestamp: 1000000},
+				{ID: 88, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				88: {ID: 88, Title: "Ask HN: Question", URL: ""}, // no external URL
@@ -383,7 +383,7 @@ func TestConvert(t *testing.T) {
 		},
 		"note template with multiple variables": {
 			bookmarks: []harmonic.Bookmark{
-				{ID: 123, Timestamp: 1000000},
+				{ID: 123, Timestamp: 1000},
 			},
 			items: map[int]*hackernews.Item{
 				123: {

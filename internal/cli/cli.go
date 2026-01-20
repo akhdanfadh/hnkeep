@@ -157,9 +157,8 @@ func printDryRunMode(bookmarks []harmonic.Bookmark) {
 			maxID = b.ID
 		}
 	}
-
-	oldest := time.Unix(minTS/1000, 0).UTC().Format("2006-01-02 15:04:05")
-	newest := time.Unix(maxTS/1000, 0).UTC().Format("2006-01-02 15:04:05")
+	oldest := time.Unix(minTS, 0).UTC().Format("2006-01-02 15:04:05")
+	newest := time.Unix(maxTS, 0).UTC().Format("2006-01-02 15:04:05")
 
 	fmt.Fprintf(os.Stderr, "Earliest entry\t: %d at %s UTC\n", minID, oldest)
 	fmt.Fprintf(os.Stderr, "Latest entry\t: %d at %s UTC\n", maxID, newest)

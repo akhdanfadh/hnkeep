@@ -12,6 +12,7 @@ type Bookmark struct {
 	// Hacker News item ID. See https://github.com/HackerNews/API#items.
 	ID int
 	// Unix timestamp when bookmarked. Explicitly int64 to avoid overflow on 32-bit systems.
+	// The original Harmonic export is in milliseconds. We convert to seconds here.
 	Timestamp int64
 }
 
@@ -45,7 +46,7 @@ func parseBookmark(s string) (Bookmark, error) {
 		return Bookmark{}, errors.New("timestamp must be positive")
 	}
 
-	return Bookmark{ID: id, Timestamp: ts}, nil
+	return Bookmark{ID: id, Timestamp: ts / 1000}, nil
 }
 
 // Parse parses the Harmonic-HN export string.

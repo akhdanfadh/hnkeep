@@ -172,7 +172,7 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 
 		// build struct
 		kb := karakeep.Bookmark{
-			CreatedAt: bm.Timestamp / 1000, // convert ms to s
+			CreatedAt: bm.Timestamp,
 			Title:     &item.Title,
 			Content: &karakeep.BookmarkContent{
 				Link: &karakeep.LinkContent{

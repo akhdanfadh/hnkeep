@@ -14,15 +14,15 @@ func TestParse(t *testing.T) {
 		"single bookmark": {
 			input: "3742902q1688536396765",
 			want: []Bookmark{
-				{ID: 3742902, Timestamp: 1688536396765},
+				{ID: 3742902, Timestamp: 1688536396},
 			},
 		},
 		"multiple bookmarks": {
 			input: "3742902q1688536396765-37392676q1748370394349-16582136q1768524091167",
 			want: []Bookmark{
-				{ID: 3742902, Timestamp: 1688536396765},
-				{ID: 37392676, Timestamp: 1748370394349},
-				{ID: 16582136, Timestamp: 1768524091167},
+				{ID: 3742902, Timestamp: 1688536396},
+				{ID: 37392676, Timestamp: 1748370394},
+				{ID: 16582136, Timestamp: 1768524091},
 			},
 		},
 		"empty input": {
@@ -32,8 +32,8 @@ func TestParse(t *testing.T) {
 		"consecutive dashes (empty bookmark in between)": {
 			input: "3742902q1688536396765---37392676q1748370394349",
 			want: []Bookmark{
-				{ID: 3742902, Timestamp: 1688536396765},
-				{ID: 37392676, Timestamp: 1748370394349},
+				{ID: 3742902, Timestamp: 1688536396},
+				{ID: 37392676, Timestamp: 1748370394},
 			},
 		},
 		"whitespaces only": {

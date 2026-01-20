@@ -19,7 +19,7 @@ type Export struct {
 // Bookmark represents a single bookmark in export/import
 // Refer to https://github.com/karakeep-app/karakeep/blob/main/packages/shared/import-export/exporters.ts
 type Bookmark struct {
-	CreatedAt int64            `json:"createdAt"`          // Unix timestamp (in seconds, not milliseconds)
+	CreatedAt int64            `json:"createdAt"`          // Unix timestamp (in seconds)
 	Title     *string          `json:"title"`              // Nullable
 	Tags      Tags             `json:"tags"`               // Empty array if no tags
 	Content   *BookmarkContent `json:"content"`            // Link object, text object, or null

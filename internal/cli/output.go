@@ -15,6 +15,7 @@ type stats struct {
 	afterLimit  int
 	skipped     int
 	converted   int
+	deduped     int
 	cacheHits   int
 
 	totalStart time.Time
@@ -58,6 +59,10 @@ func printSummary(stats stats) {
 
 	if stats.skipped > 0 {
 		fmt.Fprintf(os.Stderr, "  Fetch skipped : -%d   (deleted/dead/not found)\n", stats.skipped)
+	}
+
+	if stats.deduped > 0 {
+		fmt.Fprintf(os.Stderr, "  Deduplicated  : -%d   (merged duplicate URLs)\n", stats.deduped)
 	}
 
 	fmt.Fprintf(os.Stderr, "Converted       : %d\n", stats.converted)

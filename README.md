@@ -43,11 +43,14 @@ cat harmonic-export.txt | hnkeep > karakeep-import.json
 | `-c, --concurrency` | 5                                              | Number of concurrent HN API requests               |
 | `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks             |
 | `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                   |
+| `--no-dedupe`       |                                                | Keep duplicate URLs instead of merging them        |
 | `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                   |
 | `--no-cache`        |                                                | Disable caching of HN API responses                |
 | `--clear-cache`     |                                                | Clear the cache before running                     |
 
-Date filters (`--before`, `--after`) accept: `YYYY-MM-DD`, RFC3339, or Unix timestamp (seconds).
+Date filters (`--before`, `--after`) accept: `YYYY-MM-DD`, [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339), or [Unix timestamp](https://www.unixtimestamp.com/) (seconds).
+
+By default, duplicate URLs are merged into a single bookmark. The first occurrence (by bookmark save time, not HN submission time) is kept with its title and timestamp, and notes from duplicates are appended with a `---` separator. Use `--no-dedupe` to keep all duplicates.
 
 For note template, the following variables are available (use `--note-template ""` to disable notes entirely):
 

@@ -17,7 +17,11 @@ import (
 type Options struct {
 	Tags         []string // Tags to apply to all bookmarks
 	NoteTemplate string   // Template for note field (empty = no note)
+	Dedupe       bool     // Merge duplicate URLs, combining their notes
 }
+
+// noteSeparator is used to join notes when merging duplicate URLs.
+const noteSeparator = "\n\n---\n\n"
 
 // ItemFetcher defines the interface for fetching Hacker News items.
 type ItemFetcher interface {
@@ -154,8 +158,12 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 }
 
 // Convert converts the fetched items and bookmarks into Karakeep export format.
-func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hackernews.Item, opts Options) karakeep.Export {
+// Returns the export and the number of duplicate URLs that were merged.
+func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hackernews.Item, opts Options) (karakeep.Export, int) {
 	var export karakeep.Export
+	seenURLs := make(map[string]int) // url -> index in export.Bookmarks
+	dedupedCount := 0
+
 	for _, bm := range bookmarks {
 		item, ok := items[bm.ID]
 		if !ok {
@@ -168,6 +176,42 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 			url = item.URL
 		} else {
 			url = hackernews.DiscussionURL(item.ID)
+		}
+
+		// render note template
+		var note string
+		if opts.NoteTemplate != "" {
+			smartURL := hackernews.DiscussionURL(item.ID)
+			if item.URL == "" {
+				smartURL = ""
+			}
+			note = strings.NewReplacer(
+				"{{smart_url}}", smartURL,
+				"{{item_url}}", item.URL,
+				"{{hn_url}}", hackernews.DiscussionURL(item.ID),
+				"{{id}}", strconv.Itoa(item.ID),
+				"{{title}}", item.Title,
+				"{{author}}", item.By,
+				"{{date}}", time.Unix(item.Time, 0).Format("2006-01-02"),
+			).Replace(opts.NoteTemplate)
+		}
+
+		// check for duplicate URL
+		if opts.Dedupe {
+			if idx, exists := seenURLs[url]; exists {
+				// merge notes with separator
+				if note != "" {
+					existing := export.Bookmarks[idx]
+					if existing.Note != nil && *existing.Note != "" {
+						merged := *existing.Note + noteSeparator + note
+						export.Bookmarks[idx].Note = &merged
+					} else {
+						export.Bookmarks[idx].Note = &note
+					}
+				}
+				dedupedCount++
+				continue // skip adding new bookmark
+			}
 		}
 
 		// build struct
@@ -183,29 +227,15 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 			Tags: opts.Tags,
 		}
 
-		// render note template
-		if opts.NoteTemplate != "" {
-			smartURL := hackernews.DiscussionURL(item.ID)
-			if item.URL == "" {
-				smartURL = ""
-			}
-
-			note := strings.NewReplacer(
-				"{{smart_url}}", smartURL,
-				"{{item_url}}", item.URL,
-				"{{hn_url}}", hackernews.DiscussionURL(item.ID),
-				"{{id}}", strconv.Itoa(item.ID),
-				"{{title}}", item.Title,
-				"{{author}}", item.By,
-				"{{date}}", time.Unix(item.Time, 0).Format("2006-01-02"),
-			).Replace(opts.NoteTemplate)
-
-			if note != "" { // avoid empty rendered note
-				kb.Note = &note
-			}
+		if note != "" { // avoid empty rendered note
+			kb.Note = &note
 		}
 
+		if opts.Dedupe {
+			seenURLs[url] = len(export.Bookmarks) // record index
+		}
 		export.Bookmarks = append(export.Bookmarks, kb)
 	}
-	return export
+
+	return export, dedupedCount
 }

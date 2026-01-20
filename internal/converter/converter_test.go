@@ -416,7 +416,7 @@ func TestConvert(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			c := New()
-			got := c.Convert(tc.bookmarks, tc.items, tc.opts)
+			got, _ := c.Convert(tc.bookmarks, tc.items, tc.opts)
 
 			// check bookmarks count
 			if len(got.Bookmarks) != len(tc.want.Bookmarks) {
@@ -472,4 +472,62 @@ func TestConvert(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestConvert_Dedupe(t *testing.T) {
+	t.Run("merges notes with separator", func(t *testing.T) {
+		c := New()
+		bookmarks := []harmonic.Bookmark{
+			{ID: 1, Timestamp: 1000},
+			{ID: 2, Timestamp: 2000},
+		}
+		items := map[int]*hackernews.Item{
+			1: {ID: 1, Title: "First Story", URL: "https://example.com"},
+			2: {ID: 2, Title: "Second Story", URL: "https://example.com"},
+		}
+		opts := Options{Dedupe: true, NoteTemplate: "{{hn_url}}"}
+
+		got, deduped := c.Convert(bookmarks, items, opts)
+
+		if len(got.Bookmarks) != 1 {
+			t.Errorf("Convert() got %d bookmarks, want 1", len(got.Bookmarks))
+		}
+		if deduped != 1 {
+			t.Errorf("Convert() deduped = %d, want 1", deduped)
+		}
+		if got.Bookmarks[0].Note == nil || !strings.Contains(*got.Bookmarks[0].Note, "---") {
+			t.Errorf("Convert() note should contain separator, got %v", got.Bookmarks[0].Note)
+		}
+	})
+
+	t.Run("duplicate note replaces empty first note", func(t *testing.T) {
+		c := New()
+		bookmarks := []harmonic.Bookmark{
+			{ID: 1, Timestamp: 1000},
+			{ID: 2, Timestamp: 2000},
+		}
+		// Item 1 has no external URL, resolves to HN discussion URL
+		// Item 2 explicitly links to item 1's HN discussion URL
+		items := map[int]*hackernews.Item{
+			1: {ID: 1, Title: "Discussion Post", URL: ""},
+			2: {ID: 2, Title: "Link to Discussion", URL: "https://news.ycombinator.com/item?id=1"},
+		}
+		// smart_url is empty when item has no external URL
+		opts := Options{Dedupe: true, NoteTemplate: "{{smart_url}}"}
+
+		got, deduped := c.Convert(bookmarks, items, opts)
+
+		if len(got.Bookmarks) != 1 {
+			t.Errorf("Convert() got %d bookmarks, want 1", len(got.Bookmarks))
+		}
+		if deduped != 1 {
+			t.Errorf("Convert() deduped = %d, want 1", deduped)
+		}
+		// First item's note was empty, so duplicate's note should replace it (no separator)
+		if got.Bookmarks[0].Note == nil {
+			t.Error("Convert() note should not be nil")
+		} else if strings.Contains(*got.Bookmarks[0].Note, "---") {
+			t.Errorf("Convert() note should not contain separator when first was empty, got %q", *got.Bookmarks[0].Note)
+		}
+	})
 }

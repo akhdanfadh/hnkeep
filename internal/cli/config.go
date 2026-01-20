@@ -21,6 +21,7 @@ type Config struct {
 	Concurrency  int      // Number of concurrent Hacker News fetches
 	Tags         []string // Tags to add to all imported bookmarks
 	NoteTemplate string   // Template for note field in bookmarks
+	Dedupe       bool     // Merge duplicate URLs (default: true)
 	CacheDir     string   // HN API responses cache directory path
 	ClearCache   bool     // Clear the cache before running
 }
@@ -71,6 +72,8 @@ func parseFlags() (*Config, error) {
 		"Template for note field in bookmarks (empty = no note). "+
 			"Variables: {{smart_url}}, {{item_url}}, {{hn_url}}, "+
 			"{{id}}, {{title}}, {{author}}, {{date}}")
+	noDedupe := flag.Bool("no-dedupe", false,
+		"Keep duplicate URLs instead of merging them")
 
 	defaultCacheDir := getDefaultCacheDir()
 	cacheDir := flag.String("cache-dir", defaultCacheDir,
@@ -126,6 +129,7 @@ func parseFlags() (*Config, error) {
 		Concurrency:  *concurrency,
 		Tags:         tagsSlice,
 		NoteTemplate: *noteTemplate,
+		Dedupe:       !*noDedupe,
 		CacheDir:     resolvedCacheDir,
 		ClearCache:   *clearCache,
 	}, nil

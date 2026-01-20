@@ -171,10 +171,12 @@ func Run() error {
 		stats.cacheHits = cc.CacheHits()
 	}
 
-	export := conv.Convert(bookmarks, items, converter.Options{
+	export, dedupedCount := conv.Convert(bookmarks, items, converter.Options{
 		Tags:         cfg.Tags,
 		NoteTemplate: cfg.NoteTemplate,
+		Dedupe:       cfg.Dedupe,
 	})
+	stats.deduped = dedupedCount
 	stats.converted = len(export.Bookmarks)
 
 	if err := writeOutput(cfg.OutputPath, export); err != nil {

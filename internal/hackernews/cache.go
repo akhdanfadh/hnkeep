@@ -1,6 +1,7 @@
 package hackernews
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -90,7 +91,12 @@ func NewCachedClient(client *Client, cacheDir string, opts ...CacheOption) (*Cac
 }
 
 // GetItem retrieves an item by ID, using the cache if available.
-func (c *CachedClient) GetItem(id int) (*Item, error) {
+func (c *CachedClient) GetItem(ctx context.Context, id int) (*Item, error) {
+	// check for early cancellation
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	// try read from cache (includes negative cache hits)
 	item, err := c.readCache(id)
 	if err == nil {
@@ -120,8 +126,10 @@ func (c *CachedClient) GetItem(id int) (*Item, error) {
 	c.mu.Unlock()
 
 	// fetch from API and cache result (best-effort), outside lock
-	call.item, call.err = c.client.GetItem(id)
-	_ = c.writeCache(id, call.item, call.err)
+	call.item, call.err = c.client.GetItem(ctx, id)
+	if ctx.Err() == nil { // don't cache incomplete results
+		_ = c.writeCache(id, call.item, call.err)
+	}
 
 	// signal waiting goroutines and cleanup
 	c.mu.Lock()

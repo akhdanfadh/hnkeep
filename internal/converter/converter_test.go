@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"strings"
@@ -21,7 +22,7 @@ type mockFetcher struct {
 	errors map[int]error
 }
 
-func (m *mockFetcher) GetItem(id int) (*hackernews.Item, error) {
+func (m *mockFetcher) GetItem(_ context.Context, id int) (*hackernews.Item, error) {
 	if err, ok := m.errors[id]; ok {
 		return nil, err
 	}
@@ -136,7 +137,10 @@ func TestFetchItems(t *testing.T) {
 			mock := &mockFetcher{items: tc.items, errors: tc.errors}
 			c := New(WithFetcher(mock), WithConcurrency(2), WithLogger(logger))
 
-			got := c.FetchItems(tc.bookmarks)
+			got, err := c.FetchItems(context.Background(), tc.bookmarks)
+			if err != nil {
+				t.Fatalf("FetchItems() unexpected error: %v", err)
+			}
 
 			// check items count
 			if len(got) != len(tc.wantItems) {

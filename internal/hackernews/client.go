@@ -1,6 +1,7 @@
 package hackernews
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,16 +74,26 @@ func WithHTTPClient(client *http.Client) ClientOption {
 }
 
 // GetItem fetches an item by its ID with retry logic.
-func (c *Client) GetItem(id int) (*Item, error) {
+func (c *Client) GetItem(ctx context.Context, id int) (*Item, error) {
 	url := fmt.Sprintf("%s/item/%d.json", c.baseURL, id)
 
 	var lastErr error
 	for attempt := 0; attempt < c.maxRetries; attempt++ {
-		if attempt > 0 {
-			time.Sleep(c.retryWait)
+		// check for cancellation before each attempt
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
 		}
 
-		item, err := c.fetchItem(url)
+		if attempt > 0 {
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			// use a timer that respects context cancellation
+			case <-time.After(c.retryWait):
+			}
+		}
+
+		item, err := c.fetchItem(ctx, url)
 		if err == nil {
 			return item, nil // immediate return on success
 		}
@@ -93,6 +104,11 @@ func (c *Client) GetItem(id int) (*Item, error) {
 			return nil, err // immediate return on known errors
 		}
 
+		// context cancellation should return immediately
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			return nil, err
+		}
+
 		lastErr = err
 	}
 
@@ -100,8 +116,13 @@ func (c *Client) GetItem(id int) (*Item, error) {
 }
 
 // fetchItem performs the actual HTTP GET request to fetch the item.
-func (c *Client) fetchItem(url string) (*Item, error) {
-	resp, err := c.httpClient.Get(url)
+func (c *Client) fetchItem(ctx context.Context, url string) (*Item, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request failed: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}

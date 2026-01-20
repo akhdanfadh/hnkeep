@@ -1,6 +1,7 @@
 package hackernews
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -100,7 +101,7 @@ func TestClient_GetItem(t *testing.T) {
 			)
 
 			// check errors
-			item, err := client.GetItem(3742902)
+			item, err := client.GetItem(context.Background(), 3742902)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatal("expected error, got nil")
@@ -141,7 +142,7 @@ func TestClient_GetItem_Retries(t *testing.T) {
 		WithRetryWait(0),
 	)
 
-	_, err := client.GetItem(3742902)
+	_, err := client.GetItem(context.Background(), 3742902)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -160,7 +161,7 @@ func TestClient_GetItem_NetworkError(t *testing.T) {
 		WithRetryWait(0),
 	)
 
-	_, err := client.GetItem(3742902)
+	_, err := client.GetItem(context.Background(), 3742902)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

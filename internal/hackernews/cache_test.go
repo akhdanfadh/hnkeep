@@ -1,6 +1,7 @@
 package hackernews
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -76,7 +77,7 @@ func TestCachedClient_GetItem_CacheMissAndHit(t *testing.T) {
 	}
 
 	// first call: cache miss, should fetch from API
-	item, err := cached.GetItem(12345)
+	item, err := cached.GetItem(context.Background(), 12345)
 	if err != nil {
 		t.Fatalf("first GetItem failed: %v", err)
 	}
@@ -88,7 +89,7 @@ func TestCachedClient_GetItem_CacheMissAndHit(t *testing.T) {
 	}
 
 	// second call: cache hit, should NOT call API
-	item, err = cached.GetItem(12345)
+	item, err = cached.GetItem(context.Background(), 12345)
 	if err != nil {
 		t.Fatalf("second GetItem failed: %v", err)
 	}
@@ -128,7 +129,7 @@ func TestCachedClient_GetItem_NegativeCache_Deleted(t *testing.T) {
 	}
 
 	// first call: API returns deleted, should be cached
-	_, err = cached.GetItem(99999)
+	_, err = cached.GetItem(context.Background(), 99999)
 	if !errors.Is(err, ErrItemDeleted) {
 		t.Fatalf("expected ErrItemDeleted, got %v", err)
 	}
@@ -137,7 +138,7 @@ func TestCachedClient_GetItem_NegativeCache_Deleted(t *testing.T) {
 	}
 
 	// second call: should return cached error without API call
-	_, err = cached.GetItem(99999)
+	_, err = cached.GetItem(context.Background(), 99999)
 	if !errors.Is(err, ErrItemDeleted) {
 		t.Fatalf("expected ErrItemDeleted from cache, got %v", err)
 	}
@@ -174,7 +175,7 @@ func TestCachedClient_GetItem_NegativeCache_Dead(t *testing.T) {
 	}
 
 	// first call: API returns dead, should be cached
-	_, err = cached.GetItem(88888)
+	_, err = cached.GetItem(context.Background(), 88888)
 	if !errors.Is(err, ErrItemDead) {
 		t.Fatalf("expected ErrItemDead, got %v", err)
 	}
@@ -183,7 +184,7 @@ func TestCachedClient_GetItem_NegativeCache_Dead(t *testing.T) {
 	}
 
 	// second call: should return cached error without API call
-	_, err = cached.GetItem(88888)
+	_, err = cached.GetItem(context.Background(), 88888)
 	if !errors.Is(err, ErrItemDead) {
 		t.Fatalf("expected ErrItemDead from cache, got %v", err)
 	}
@@ -214,7 +215,7 @@ func TestCachedClient_GetItem_TransientErrorNotCached(t *testing.T) {
 	}
 
 	// first call: transient error (500), should NOT be cached
-	_, err = cached.GetItem(77777)
+	_, err = cached.GetItem(context.Background(), 77777)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -223,7 +224,7 @@ func TestCachedClient_GetItem_TransientErrorNotCached(t *testing.T) {
 	}
 
 	// second call: should retry API (error was not cached)
-	_, err = cached.GetItem(77777)
+	_, err = cached.GetItem(context.Background(), 77777)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -283,7 +284,7 @@ func TestCachedClient_GetItem_CorruptedCache(t *testing.T) {
 			}
 
 			// GetItem should gracefully fall back to API
-			item, err := cached.GetItem(12345)
+			item, err := cached.GetItem(context.Background(), 12345)
 			if err != nil {
 				t.Fatalf("GetItem failed: %v", err)
 			}
@@ -326,7 +327,7 @@ func TestCachedClient_ClearCache(t *testing.T) {
 	}
 
 	// populate cache
-	_, err = cached.GetItem(55555)
+	_, err = cached.GetItem(context.Background(), 55555)
 	if err != nil {
 		t.Fatalf("initial GetItem failed: %v", err)
 	}
@@ -335,7 +336,7 @@ func TestCachedClient_ClearCache(t *testing.T) {
 	}
 
 	// verify cache hit
-	_, err = cached.GetItem(55555)
+	_, err = cached.GetItem(context.Background(), 55555)
 	if err != nil {
 		t.Fatalf("cached GetItem failed: %v", err)
 	}
@@ -349,7 +350,7 @@ func TestCachedClient_ClearCache(t *testing.T) {
 	}
 
 	// verify fresh fetch after clear
-	_, err = cached.GetItem(55555)
+	_, err = cached.GetItem(context.Background(), 55555)
 	if err != nil {
 		t.Fatalf("GetItem after clear failed: %v", err)
 	}
@@ -397,7 +398,7 @@ func TestCachedClient_GetItem_ConcurrentSameID(t *testing.T) {
 	for range numGoroutines {
 		go func() {
 			defer wg.Done()
-			item, err := cached.GetItem(12345)
+			item, err := cached.GetItem(context.Background(), 12345)
 			if err != nil {
 				errs <- err
 				return

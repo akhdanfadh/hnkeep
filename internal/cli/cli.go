@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -78,8 +79,8 @@ func filterByDate(bookmarks []harmonic.Bookmark, before, after int64) []harmonic
 	return filtered
 }
 
-// Run executes the CLI with the provided arguments.
-func Run() error {
+// Run executes the CLI with the provided CLI arguments.
+func Run(ctx context.Context) error {
 	var stats stats
 	stats.totalStart = time.Now()
 
@@ -160,8 +161,11 @@ func Run() error {
 	)
 
 	stats.fetchStart = time.Now()
-	items := conv.FetchItems(bookmarks)
+	items, err := conv.FetchItems(ctx, bookmarks)
 	stats.fetchEnd = time.Now()
+	if err != nil {
+		return fmt.Errorf("fetching items: %w", err)
+	}
 	stats.skipped = stats.afterLimit - len(items)
 
 	// NOTE: This is a type assertion in Go. It checks if the interface

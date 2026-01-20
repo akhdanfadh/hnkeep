@@ -1,6 +1,7 @@
 package converter
 
 import (
+	"context"
 	"errors"
 	"strconv"
 	"strings"
@@ -25,7 +26,7 @@ const noteSeparator = "\n\n---\n\n"
 
 // ItemFetcher defines the interface for fetching Hacker News items.
 type ItemFetcher interface {
-	GetItem(id int) (*hackernews.Item, error)
+	GetItem(ctx context.Context, id int) (*hackernews.Item, error)
 }
 
 // Logger defines the interface for logging messages.
@@ -102,7 +103,7 @@ func WithLogger(l Logger) Option {
 }
 
 // FetchItems fetches Hacker News items for the given bookmarks concurrently.
-func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernews.Item {
+func (c *Converter) FetchItems(ctx context.Context, bookmarks []harmonic.Bookmark) (map[int]*hackernews.Item, error) {
 	type result struct {
 		bookmark harmonic.Bookmark
 		item     *hackernews.Item
@@ -125,10 +126,27 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 		// - https://go.dev/doc/faq#closures_and_goroutines
 		go func(bookmark harmonic.Bookmark) {
 			defer wg.Done()
-			semaphore <- struct{}{}        // acquire
+
+			// check for cancellation before acquiring
+			// this prevents queued goroutines from starting new work after Ctrl+C
+			select {
+			case <-ctx.Done():
+				return
+			case semaphore <- struct{}{}: // acquire
+			}
 			defer func() { <-semaphore }() // release
 
-			item, err := c.fetcher.GetItem(bookmark.ID)
+			// check again after acquiring (in case cancelled while waiting)
+			if ctx.Err() != nil {
+				return
+			}
+
+			item, err := c.fetcher.GetItem(ctx, bookmark.ID)
+			// don't send result (avoid blocking on full channel)
+			if ctx.Err() != nil {
+				return
+			}
+
 			n := counter.Add(1)
 			c.logger.Info("fetched %d/%d (ID: %d)", n, total, bookmark.ID)
 			results <- result{bookmark: bookmark, item: item, err: err}
@@ -143,6 +161,11 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 	// process fetch results
 	items := make(map[int]*hackernews.Item)
 	for r := range results {
+		// check for cancellation while processing results
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
 		if r.err != nil {
 			if errors.Is(r.err, hackernews.ErrItemNotFound) {
 				c.logger.Warn("item %d not found, skipping", r.bookmark.ID)
@@ -154,7 +177,7 @@ func (c *Converter) FetchItems(bookmarks []harmonic.Bookmark) map[int]*hackernew
 		items[r.bookmark.ID] = r.item
 	}
 
-	return items
+	return items, nil
 }
 
 // Convert converts the fetched items and bookmarks into Karakeep export format.

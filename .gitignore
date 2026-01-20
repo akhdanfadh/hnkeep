@@ -4,6 +4,9 @@
 *.json
 *.txt
 
+# Added by goreleaser init:
+dist/
+
 # ------------------------------------------------------------------------------
 
 # Created by https://www.toptal.com/developers/gitignore/api/go

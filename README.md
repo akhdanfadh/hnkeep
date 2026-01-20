@@ -37,12 +37,17 @@ cat harmonic-export.txt | hnkeep > karakeep-import.json
 | `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                        |
 | `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only) |
 | `--dry-run`         |                                                | Preview conversion without HN API calls            |
+| `--before`          |                                                | Only include bookmarks before this date            |
+| `--after`           |                                                | Only include bookmarks after this date             |
+| `-n, --limit`       | 0                                              | Number of bookmarks to process (0 = all)           |
 | `-c, --concurrency` | 5                                              | Number of concurrent HN API requests               |
 | `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks             |
 | `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                   |
 | `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                   |
 | `--no-cache`        |                                                | Disable caching of HN API responses                |
 | `--clear-cache`     |                                                | Clear the cache before running                     |
+
+Date filters (`--before`, `--after`) accept: `YYYY-MM-DD`, RFC3339, or Unix timestamp (seconds).
 
 For note template, the following variables are available (use `--note-template ""` to disable notes entirely):
 

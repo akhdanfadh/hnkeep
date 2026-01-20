@@ -59,9 +59,31 @@ func writeOutput(path string, export karakeep.Export) (err error) {
 	return encoder.Encode(export)
 }
 
+// filterByDate filters bookmarks by before and after timestamps.
+func filterByDate(bookmarks []harmonic.Bookmark, before, after int64) []harmonic.Bookmark {
+	if after == 0 && before == 0 {
+		return bookmarks
+	} // basic validation
+
+	filtered := make([]harmonic.Bookmark, 0, len(bookmarks))
+	for _, bm := range bookmarks {
+		if after > 0 && bm.Timestamp < after {
+			continue
+		}
+		if before > 0 && bm.Timestamp > before {
+			continue
+		}
+		filtered = append(filtered, bm)
+	}
+	return filtered
+}
+
 // Run executes the CLI with the provided arguments.
 func Run() error {
-	cfg := parseFlags()
+	cfg, err := parseFlags()
+	if err != nil {
+		return fmt.Errorf("parsing flags: %w", err)
+	}
 
 	// if no input data is given and stdin is a terminal, show usage and exit
 	// NOTE: Without this check, it "feels" like the program is hanging. That is actually a
@@ -85,9 +107,18 @@ func Run() error {
 		return fmt.Errorf("reading input: %w", err)
 	}
 
+	// parse harmonic export
 	bookmarks, err := harmonic.Parse(input)
 	if err != nil {
 		return fmt.Errorf("parsing input: %w", err)
+	}
+
+	// apply filters
+	if cfg.Before > 0 || cfg.After > 0 {
+		bookmarks = filterByDate(bookmarks, cfg.Before, cfg.After)
+	}
+	if cfg.Limit > 0 && cfg.Limit < len(bookmarks) {
+		bookmarks = bookmarks[:cfg.Limit]
 	}
 
 	// dry run mode: give stats on the input and exit
@@ -96,10 +127,12 @@ func Run() error {
 		return nil
 	}
 
+	// configure logger and clients
 	logger := NewLogger(os.Stderr, cfg.Quiet)
 	client := hackernews.NewClient()
 	var fetcher converter.ItemFetcher = client
 
+	// use cached client if cache dir is set
 	if cfg.CacheDir != "" {
 		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir, hackernews.WithLogger(logger))
 		if err != nil {
@@ -113,12 +146,12 @@ func Run() error {
 		fetcher = cachedClient
 	}
 
+	// perform conversion
 	conv := converter.New(
 		converter.WithFetcher(fetcher),
 		converter.WithConcurrency(cfg.Concurrency),
 		converter.WithLogger(logger),
 	)
-
 	items := conv.FetchItems(bookmarks)
 	export := conv.Convert(bookmarks, items, converter.Options{
 		Tags:         cfg.Tags,

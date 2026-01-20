@@ -2,25 +2,31 @@ package cli
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type Config struct {
-	InputPath    string
-	OutputPath   string
-	Quiet        bool
-	DryRun       bool
-	Concurrency  int
-	Tags         []string
-	NoteTemplate string
-	CacheDir     string
-	ClearCache   bool
+	InputPath    string   // Input file path (default: stdin)
+	OutputPath   string   // Output file path (default: stdout)
+	Quiet        bool     // Suppress informational messages
+	DryRun       bool     // Preview conversion without API calls
+	Before       int64    // Process only bookmarks before this timestamp (0 = all)
+	After        int64    // Process only bookmarks after this timestamp (0 = all)
+	Limit        int      // Process only first N bookmarks (0 = all)
+	Concurrency  int      // Number of concurrent Hacker News fetches
+	Tags         []string // Tags to add to all imported bookmarks
+	NoteTemplate string   // Template for note field in bookmarks
+	CacheDir     string   // HN API responses cache directory path
+	ClearCache   bool     // Clear the cache before running
 }
 
 // parseFlags parses command-line flags and returns a Config struct.
-func parseFlags() *Config {
+func parseFlags() (*Config, error) {
 	// NOTE: go flag package does not support alias natively.
 	// - https://github.com/golang/go/issues/35761
 
@@ -30,7 +36,7 @@ func parseFlags() *Config {
 		"alias for -input (default stdin)")
 
 	outputPath := flag.String("output", "",
-		"Output file path, e.g.., karakeep-import.json (default stdout)")
+		"Output file path, e.g., karakeep-import.json (default stdout)")
 	flag.StringVar(outputPath, "o", "",
 		"alias for -output (default stdout)")
 
@@ -41,6 +47,15 @@ func parseFlags() *Config {
 
 	dryRun := flag.Bool("dry-run", false,
 		"Preview conversion without API calls")
+
+	before := flag.String("before", "",
+		"Only include Harmonic bookmarks before this timestamp")
+	after := flag.String("after", "",
+		"Only include Harmonic bookmarks after this timestamp")
+	limit := flag.Int("limit", 0,
+		"Number of bookmarks to process (0 = all)")
+	flag.IntVar(limit, "n", 0,
+		"alias for -limit")
 
 	concurrency := flag.Int("concurrency", 5,
 		"Number of concurrent Hacker News fetches.")
@@ -67,6 +82,23 @@ func parseFlags() *Config {
 
 	flag.Parse()
 
+	// parse date filters
+	var beforeTS, afterTS int64
+	if *before != "" {
+		t, err := parseDate(*before)
+		if err != nil {
+			return nil, fmt.Errorf("parsing -before date: %w", err)
+		}
+		beforeTS = t.Unix()
+	}
+	if *after != "" {
+		t, err := parseDate(*after)
+		if err != nil {
+			return nil, fmt.Errorf("parsing -after date: %w", err)
+		}
+		afterTS = t.Unix()
+	}
+
 	// parse tags
 	var tagsSlice []string
 	if *tags != "" {
@@ -88,12 +120,15 @@ func parseFlags() *Config {
 		OutputPath:   *outputPath,
 		Quiet:        *quiet,
 		DryRun:       *dryRun,
+		Before:       beforeTS,
+		After:        afterTS,
+		Limit:        *limit,
 		Concurrency:  *concurrency,
 		Tags:         tagsSlice,
 		NoteTemplate: *noteTemplate,
 		CacheDir:     resolvedCacheDir,
 		ClearCache:   *clearCache,
-	}
+	}, nil
 }
 
 // getDefaultCacheDir returns the default cache directory following platform conventions.
@@ -106,4 +141,24 @@ func getDefaultCacheDir() string {
 		return filepath.Join(home, ".cache", "hnkeep")
 	}
 	return ""
+}
+
+// parseDate attempts to parse a date string in various formats.
+// Supported formats are "2006-01-02", RFC3339, and Unix timestamp (seconds since epoch).
+func parseDate(s string) (time.Time, error) {
+	formats := []string{
+		"2006-01-02",
+		time.RFC3339,
+	}
+
+	if ts, err := strconv.ParseInt(s, 10, 64); err == nil {
+		return time.Unix(ts, 0), nil
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, s); err == nil {
+			return t, nil
+		}
+	}
+	return time.Time{}, fmt.Errorf("invalid date format: %s", s)
 }

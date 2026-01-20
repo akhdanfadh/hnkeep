@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 )
 
 // Cache permanent-error states for negative caching.
@@ -56,8 +57,9 @@ type CachedClient struct {
 	cacheDir string
 	logger   Logger
 
-	mu       sync.Mutex
-	inflight map[int]*inflightCall
+	mu        sync.Mutex
+	inflight  map[int]*inflightCall
+	cacheHits atomic.Int32
 }
 
 // CacheOption configures the CachedClient.
@@ -92,10 +94,12 @@ func (c *CachedClient) GetItem(id int) (*Item, error) {
 	// try read from cache (includes negative cache hits)
 	item, err := c.readCache(id)
 	if err == nil {
+		c.cacheHits.Add(1)
 		c.logger.Info("cache hit for item %d", id)
 		return item, nil
 	}
 	if errors.Is(err, ErrItemDeleted) || errors.Is(err, ErrItemDead) {
+		c.cacheHits.Add(1)
 		c.logger.Info("cache hit for item %d (negative)", id)
 		return nil, err // cached error state
 	}
@@ -126,6 +130,11 @@ func (c *CachedClient) GetItem(id int) (*Item, error) {
 	call.wg.Done()
 
 	return call.item, call.err
+}
+
+// CacheHits returns the number of cache hits (both positive and negative).
+func (c *CachedClient) CacheHits() int {
+	return int(c.cacheHits.Load())
 }
 
 // getCachePath returns the file path for the cached item with the given ID.

@@ -80,6 +80,9 @@ func filterByDate(bookmarks []harmonic.Bookmark, before, after int64) []harmonic
 
 // Run executes the CLI with the provided arguments.
 func Run() error {
+	var stats stats
+	stats.totalStart = time.Now()
+
 	cfg, err := parseFlags()
 	if err != nil {
 		return fmt.Errorf("parsing flags: %w", err)
@@ -112,18 +115,21 @@ func Run() error {
 	if err != nil {
 		return fmt.Errorf("parsing input: %w", err)
 	}
+	stats.found = len(bookmarks)
 
 	// apply filters
 	if cfg.Before > 0 || cfg.After > 0 {
 		bookmarks = filterByDate(bookmarks, cfg.Before, cfg.After)
 	}
+	stats.afterFilter = len(bookmarks)
 	if cfg.Limit > 0 && cfg.Limit < len(bookmarks) {
 		bookmarks = bookmarks[:cfg.Limit]
 	}
+	stats.afterLimit = len(bookmarks)
 
 	// dry run mode: give stats on the input and exit
 	if cfg.DryRun {
-		printDryRunMode(bookmarks)
+		printDryRunMode(stats, bookmarks)
 		return nil
 	}
 
@@ -152,48 +158,31 @@ func Run() error {
 		converter.WithConcurrency(cfg.Concurrency),
 		converter.WithLogger(logger),
 	)
+
+	stats.fetchStart = time.Now()
 	items := conv.FetchItems(bookmarks)
+	stats.fetchEnd = time.Now()
+	stats.skipped = stats.afterLimit - len(items)
+
+	// NOTE: This is a type assertion in Go. It checks if the interface
+	// value `fetcher` holds the concrete type `*hackernews.CachedClient`.
+	// - https://go.dev/doc/effective_go#interface_conversions
+	if cc, ok := fetcher.(*hackernews.CachedClient); ok {
+		stats.cacheHits = cc.CacheHits()
+	}
+
 	export := conv.Convert(bookmarks, items, converter.Options{
 		Tags:         cfg.Tags,
 		NoteTemplate: cfg.NoteTemplate,
 	})
+	stats.converted = len(export.Bookmarks)
 
 	if err := writeOutput(cfg.OutputPath, export); err != nil {
 		return fmt.Errorf("writing output: %w", err)
 	}
 
+	if !cfg.Quiet {
+		printSummary(stats)
+	}
 	return nil
-}
-
-// printDryRunMode prints statistics about the bookmarks without making any API calls.
-func printDryRunMode(bookmarks []harmonic.Bookmark) {
-	fmt.Fprintf(os.Stderr, "=== Dry Run ===\n")
-	fmt.Fprintf(os.Stderr, "Bookmarks\t: %d\n", len(bookmarks))
-	if len(bookmarks) == 0 {
-		return
-	}
-
-	// find date and id range
-	minTS, maxTS := bookmarks[0].Timestamp, bookmarks[0].Timestamp
-	minID, maxID := bookmarks[0].ID, bookmarks[0].ID
-	for _, b := range bookmarks {
-		if b.Timestamp < minTS {
-			minTS = b.Timestamp
-		}
-		if b.Timestamp > maxTS {
-			maxTS = b.Timestamp
-		}
-		if b.ID < minID {
-			minID = b.ID
-		}
-		if b.ID > maxID {
-			maxID = b.ID
-		}
-	}
-	oldest := time.Unix(minTS, 0).UTC().Format("2006-01-02 15:04:05")
-	newest := time.Unix(maxTS, 0).UTC().Format("2006-01-02 15:04:05")
-
-	fmt.Fprintf(os.Stderr, "Earliest entry\t: %d at %s UTC\n", minID, oldest)
-	fmt.Fprintf(os.Stderr, "Latest entry\t: %d at %s UTC\n", maxID, newest)
-	fmt.Fprintf(os.Stderr, "\nNo API calls made.\n")
 }

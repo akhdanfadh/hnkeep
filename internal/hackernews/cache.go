@@ -37,15 +37,7 @@ func (noopLogger) Info(string, ...any)  {}
 func (noopLogger) Warn(string, ...any)  {}
 func (noopLogger) Error(string, ...any) {}
 
-// NOTE: This is a simplified "singleflight" concurrency control implementation.
-// It deduplicates concurrent requests for the same key (item ID in our case)
-// so only one fetch happens while others wait for the result.
-// If not configured, multiple goroutines requesting the same item ID could all
-// miss cache, all fetch from the API, and all write to the same file concurrently.
-// - https://pkg.go.dev/golang.org/x/sync/singleflight
-
-// inflightCall represents an in-progress fetch for an item.
-// Multiple goroutines requesting the same item ID share one inflightCall.
+// inflightCall deduplicates concurrent fetches for the same item (singleflight pattern).
 type inflightCall struct {
 	wg   sync.WaitGroup
 	item *Item

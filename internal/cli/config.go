@@ -33,9 +33,6 @@ type Config struct {
 
 // parseFlags parses command-line flags and returns a Config struct.
 func parseFlags() (*Config, error) {
-	// NOTE: go flag package does not support alias natively.
-	// - https://github.com/golang/go/issues/35761
-
 	showVersion := flag.Bool("version", false,
 		"Show version information and exit")
 	flag.BoolVar(showVersion, "v", false,

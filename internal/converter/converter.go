@@ -36,10 +36,6 @@ type Logger interface {
 	Error(format string, args ...any)
 }
 
-// NOTE: Go does not support constant arrays, maps, or slices.
-// - https://blog.boot.dev/golang/golang-constant-maps-slices
-// - https://stackoverflow.com/questions/13137463/declare-a-constant-array
-
 const defaultConcurrency = 5
 
 // getDefaultFetcher returns the default Hacker News client (item fetcher).
@@ -47,12 +43,8 @@ func getDefaultFetcher() ItemFetcher {
 	return hackernews.NewClient()
 }
 
-// noopLogger is a Logger implementation that does nothing.
-// It silently discards all messages without writing them anywhere.
+// noopLogger is a do-nothing Logger (null object pattern).
 type noopLogger struct{}
-
-// NOTE: This is a common pattern in Go called the "null object pattern",
-// i.e., providing a valid, do-nothing implementation instead of using nil.
 
 func (noopLogger) Info(string, ...any)  {}
 func (noopLogger) Warn(string, ...any)  {}
@@ -116,15 +108,10 @@ func (c *Converter) FetchItems(ctx context.Context, bookmarks []harmonic.Bookmar
 	var counter atomic.Int32 // for logging progress
 
 	// fetch items with semaphore
-	// NOTE: Having read "Grokking Concurrency" really helped me understand this concurrency pattern.
 	var wg sync.WaitGroup
 	for _, bm := range bookmarks {
 		wg.Add(1)
-		// NOTE: We need to pass bm as parameter to avoid closure capture issue.
-		// Otherwise, all goroutines would capture the same loop variable reference (last value in loop).
-		// - https://go.dev/wiki/CommonMistakes
-		// - https://go.dev/doc/faq#closures_and_goroutines
-		go func(bookmark harmonic.Bookmark) {
+		go func(bookmark harmonic.Bookmark) { // pass bm as param to avoid closure capture
 			defer wg.Done()
 
 			// check for cancellation before acquiring

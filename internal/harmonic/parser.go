@@ -58,9 +58,6 @@ func Parse(input string) ([]Bookmark, error) {
 		return nil, errors.New("empty input")
 	}
 
-	// NOTE: Surely using '-' as separator is clever here, no? As we can
-	// eliminate the case for negative numbers right away. Using any
-	// non-numeric character would work equally well, but this is good design.
 	parts := strings.Split(input, "-")
 	bookmarks := make([]Bookmark, 0, len(parts))
 

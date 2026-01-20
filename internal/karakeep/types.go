@@ -7,15 +7,6 @@ type Export struct {
 	Bookmarks []Bookmark `json:"bookmarks"`
 }
 
-// NOTE: On when to use omitempty and pointers (nullable).
-// Use pointers for fields that are explicitly nullable in the schema.
-// Pointers let you distinguish between null (nil) vs zero value vs missing.
-// Use omitempty for fields that should be omitted from JSON when they have zero/nil value.
-// Remember: JSON null, "", and missing field are different concepts.
-// - null: pointer is nil
-// - "": pointer to empty string
-// - missing: depends on omitempty (omitted if present, or nil/zero if absent)
-
 // Bookmark represents a single bookmark in export/import
 // Refer to https://github.com/karakeep-app/karakeep/blob/main/packages/shared/import-export/exporters.ts
 type Bookmark struct {
@@ -37,10 +28,6 @@ func (s Tags) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]string(s))
 }
 
-// NOTE: JSON struct tags with "-" tells the encoder/decoder to ignore these fields. This ensures that:
-// - Marshal: only use our custom logic runs (yes, our custom marshaler implement the Marshaler interface)
-// - Unmarshal: Go doesn't try to unmarshal into all fields, only the relevant one based on "type".
-
 type BookmarkType string
 
 const (
@@ -61,7 +48,8 @@ type TextContent struct {
 	Text string       `json:"text"`
 }
 
-// BookmarkContent is a discriminated union for bookmark content
+// BookmarkContent is a discriminated union for bookmark content.
+// Fields use json:"-" so only our custom MarshalJSON/UnmarshalJSON runs.
 type BookmarkContent struct {
 	Link *LinkContent `json:"-"`
 	Text *TextContent `json:"-"`

@@ -37,8 +37,6 @@ func NewClient(opts ...ClientOption) *Client {
 		retryWait:  defaultRetryWait,
 	}
 
-	// NOTE: Functional options pattern: allows callers to customize behavior
-	// (e.g., in tests) while keeping NewClient() clean and simple for common case.
 	for _, opt := range opts {
 		opt(c)
 	}
@@ -138,10 +136,7 @@ func (c *Client) fetchItem(ctx context.Context, url string) (*Item, error) {
 	if err != nil {
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
-	// NOTE: Close errors are not actionable here. The response body has already been
-	// read and the actual HTTP operation succeeded or failed. Network errors during
-	// close are transient and don't indicate application logic issues.
-	defer func() { _ = resp.Body.Close() }()
+	defer func() { _ = resp.Body.Close() }() // close error not actionable after read
 
 	if resp.StatusCode == http.StatusTooManyRequests {
 		return nil, ErrRateLimited
@@ -152,9 +147,7 @@ func (c *Client) fetchItem(ctx context.Context, url string) (*Item, error) {
 		return nil, fmt.Errorf("decode failed: %w", err)
 	}
 
-	// NOTE: Turns out HN API always returns 200 OK (probably Firebase quirk, idk).
-	// For non-existent items, it returns "null" in the body.
-	if item.ID == 0 {
+	if item.ID == 0 { // HN API returns 200 with "null" body for missing items
 		return nil, ErrItemNotFound
 	}
 

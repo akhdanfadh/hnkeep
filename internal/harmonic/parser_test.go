@@ -1,8 +1,5 @@
 package harmonic
 
-// NOTE: We are implementing table-driven tests here following
-// https://dave.cheney.net/2019/05/07/prefer-table-driven-tests
-
 import "testing"
 
 func TestParse(t *testing.T) {

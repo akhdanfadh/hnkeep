@@ -36,13 +36,8 @@ func readInput(path string) (string, error) {
 
 // writeOutput writes the output to the specified path or stdout if the path is empty.
 func writeOutput(path string, export karakeep.Export) (err error) {
-	// NOTE: Use bufio.Writer here if you are making many small writes and want to avoid
-	// overhead of frequent syscalls. However, we are writing only once in this code.
-	// - https://pkg.go.dev/bufio#Writer
 	var w io.Writer = os.Stdout // fallback
 	if path != "" {
-		// NOTE: I wrote a bug here by using `err :=` which shadowed the named return
-		// `err` the defer needs to report Close() errors. So be careful with that.
 		f, createErr := os.Create(path)
 		if createErr != nil {
 			return createErr
@@ -90,15 +85,6 @@ func Run(ctx context.Context) error {
 	}
 
 	// if no input data is given and stdin is a terminal, show usage and exit
-	// NOTE: Without this check, it "feels" like the program is hanging. That is actually a
-	// standard UNIX filter behavior (see example below). But for better UX we show usage instead.
-	// Example (like cat, grep, sed, awk):
-	// ```
-	// $ ./hnkeep
-	// hello world      <-- you type this
-	// ^D               <-- Ctrl+D to send EOF
-	// <output appears here>
-	// ```
 	if cfg.InputPath == "" {
 		if stat, _ := os.Stdin.Stat(); (stat.Mode() & os.ModeCharDevice) != 0 {
 			flag.Usage()
@@ -168,9 +154,6 @@ func Run(ctx context.Context) error {
 	}
 	stats.skipped = stats.afterLimit - len(items)
 
-	// NOTE: This is a type assertion in Go. It checks if the interface
-	// value `fetcher` holds the concrete type `*hackernews.CachedClient`.
-	// - https://go.dev/doc/effective_go#interface_conversions
 	if cc, ok := fetcher.(*hackernews.CachedClient); ok {
 		stats.cacheHits = cc.CacheHits()
 	}

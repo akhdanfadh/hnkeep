@@ -11,18 +11,6 @@ import (
 	"github.com/akhdanfadh/hnkeep/internal/cli"
 )
 
-// NOTE: Go versioning via ldflags is the standard pattern for CLI tools.
-// The linker's -X flag sets string variables at build time without modifying source code.
-// This enables:
-// - `make build`:
-//   Makefile injects git tag/commit via ldflags (clean, controlled format)
-// - `go build` / `go install ...@version`:
-//   Falls back to runtime/debug.ReadBuildInfo() which Go populates automatically
-//   with module version info (pseudo-version for untagged: v0.0.0-YYYYMMDD-commit)
-// For releases, tag with semver (git tag v1.0.0) so both ldflags and go install work correctly.
-// - https://blog.cloudflare.com/setting-go-variables-at-compile-time/
-// - https://pkg.go.dev/runtime/debug#ReadBuildInfo
-
 // version and commit are set during build time using -ldflags,
 var (
 	version = "dev"
@@ -43,11 +31,7 @@ func getVersion() string {
 }
 
 func main() {
-	// NOTE: Root context that cancels on SIGINT (Ctrl+C) or SIGTERM.
-	// This enables graceful shutdown: all in-flight operations will be cancelled
-	// and goroutines can exit cleanly instead of being forcefully terminated.
-	// Context itself is basically a way in Go to propagate signals across concurrent operations.
-	// - https://medium.com/@jamal.kaksouri/the-complete-guide-to-context-in-golang-efficient-concurrency-management-43d722f6eaea
+	// graceful shutdown: cancels context on SIGINT/SIGTERM
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 

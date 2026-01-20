@@ -33,6 +33,7 @@ cat harmonic-export.txt | hnkeep > karakeep-import.json
 
 | Flag                | Default                                        | Description                                        |
 | ------------------- | ---------------------------------------------- | -------------------------------------------------- |
+| `-v, --version`     |                                                | Show version information                           |
 | `-i, --input`       | stdin                                          | Input file (Harmonic export)                       |
 | `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                        |
 | `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only) |

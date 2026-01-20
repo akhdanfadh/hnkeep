@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+var (
+	Version = "dev"
+	Commit  = "none"
+)
+
 type Config struct {
 	InputPath    string   // Input file path (default: stdin)
 	OutputPath   string   // Output file path (default: stdout)
@@ -30,6 +35,11 @@ type Config struct {
 func parseFlags() (*Config, error) {
 	// NOTE: go flag package does not support alias natively.
 	// - https://github.com/golang/go/issues/35761
+
+	showVersion := flag.Bool("version", false,
+		"Show version information and exit")
+	flag.BoolVar(showVersion, "v", false,
+		"alias for -version")
 
 	inputPath := flag.String("input", "",
 		"Input file path, e.g., harmonic-export.txt (default to stdin)")
@@ -84,6 +94,11 @@ func parseFlags() (*Config, error) {
 		"Clear the cache before running")
 
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("hnkeep version %s, build %s\n", Version, Commit)
+		os.Exit(0)
+	}
 
 	// parse date filters
 	var beforeTS, afterTS int64

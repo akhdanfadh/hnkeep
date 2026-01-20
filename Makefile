@@ -2,6 +2,9 @@
 .PHONY: test test-verbose test-race test-cover
 
 BINARY_NAME := hnkeep
+VERSION     ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+COMMIT      ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "none")
+LDFLAGS     := -ldflags "-X main.version=$(VERSION) -X main.commit=$(COMMIT)"
 
 lint:
 	go vet ./...
@@ -19,7 +22,7 @@ test-cover:
 	go tool cover -html=coverage.out
 
 build:
-	go build -o $(BINARY_NAME) ./cmd/hnkeep
+	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/hnkeep
 
 clean:
 	rm -f $(BINARY_NAME)

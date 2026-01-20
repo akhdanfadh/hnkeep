@@ -109,6 +109,18 @@ func (c *Client) GetItem(ctx context.Context, id int) (*Item, error) {
 			return nil, err
 		}
 
+		// exponential backoff capped at 30s for rate limiting
+		if errors.Is(err, ErrRateLimited) {
+			backoff := min(c.retryWait*time.Duration(1<<attempt), 30*time.Second)
+			select {
+			case <-ctx.Done():
+				return nil, ctx.Err()
+			case <-time.After(backoff):
+			}
+			lastErr = err
+			continue
+		}
+
 		lastErr = err
 	}
 
@@ -130,6 +142,10 @@ func (c *Client) fetchItem(ctx context.Context, url string) (*Item, error) {
 	// read and the actual HTTP operation succeeded or failed. Network errors during
 	// close are transient and don't indicate application logic issues.
 	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return nil, ErrRateLimited
+	}
 
 	var item Item
 	if err := json.NewDecoder(resp.Body).Decode(&item); err != nil {

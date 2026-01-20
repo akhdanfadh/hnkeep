@@ -31,4 +31,6 @@ var (
 	ErrItemDeleted = errors.New("item is deleted")
 	// ErrItemDead is returned when the requested item is marked as dead.
 	ErrItemDead = errors.New("item is dead")
+	// ErrRateLimited is returned when the API returns HTTP 429 Too Many Requests.
+	ErrRateLimited = errors.New("rate limited by API")
 )

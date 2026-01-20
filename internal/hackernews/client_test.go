@@ -170,6 +170,32 @@ func TestClient_GetItem_NetworkError(t *testing.T) {
 	}
 }
 
+func TestClient_GetItem_RateLimited(t *testing.T) {
+	attempts := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts++
+		w.WriteHeader(http.StatusTooManyRequests)
+	}))
+	defer server.Close()
+
+	client := NewClient(
+		WithBaseURL(server.URL),
+		WithRetries(3),
+		WithRetryWait(0), // no wait for test speed
+	)
+
+	_, err := client.GetItem(context.Background(), 3742902)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+	if !strings.Contains(err.Error(), "rate limited") {
+		t.Errorf("expected error to contain 'rate limited', got %q", err.Error())
+	}
+	if attempts != 3 {
+		t.Errorf("expected 3 attempts with exponential backoff, got %d", attempts)
+	}
+}
+
 func TestDiscussionURL(t *testing.T) {
 	got := DiscussionURL(3742902)
 	want := "https://news.ycombinator.com/item?id=3742902"

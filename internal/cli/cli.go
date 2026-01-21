@@ -12,7 +12,6 @@ import (
 	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
-	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
 
 // readInput reads the input from the specified path or stdin if the path is empty.
@@ -35,7 +34,7 @@ func readInput(path string) (string, error) {
 }
 
 // writeOutput writes the output to the specified path or stdout if the path is empty.
-func writeOutput(path string, export karakeep.Export) (err error) {
+func writeOutput(path string, export converter.Schema) (err error) {
 	var w io.Writer = os.Stdout // fallback
 	if path != "" {
 		f, createErr := os.Create(path)

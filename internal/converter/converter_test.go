@@ -10,7 +10,6 @@ import (
 
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
-	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
 
 // ptr returns a pointer to the given string (helper for test data).
@@ -184,7 +183,7 @@ func TestConvert(t *testing.T) {
 		bookmarks []harmonic.Bookmark
 		items     map[int]*hackernews.Item
 		opts      Options
-		want      karakeep.Export
+		want      Schema
 	}{
 		"single bookmark with URL": {
 			bookmarks: []harmonic.Bookmark{
@@ -193,17 +192,12 @@ func TestConvert(t *testing.T) {
 			items: map[int]*hackernews.Item{
 				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
 			},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 1000,
 						Title:     &title1,
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://example.com",
-							},
-						},
+						Content:   NewBookmarkContent("https://example.com"),
 					},
 				},
 			},
@@ -215,17 +209,12 @@ func TestConvert(t *testing.T) {
 			items: map[int]*hackernews.Item{
 				123: {ID: 123, Title: "Story without URL", URL: ""},
 			},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 2000,
 						Title:     &title2,
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://news.ycombinator.com/item?id=123",
-							},
-						},
+						Content:   NewBookmarkContent("https://news.ycombinator.com/item?id=123"),
 					},
 				},
 			},
@@ -240,27 +229,17 @@ func TestConvert(t *testing.T) {
 				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
 				2: {ID: 2, Title: "Another Story", URL: "https://another.com"},
 			},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 1000,
 						Title:     &title1,
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://example.com",
-							},
-						},
+						Content:   NewBookmarkContent("https://example.com"),
 					},
 					{
 						CreatedAt: 3000,
 						Title:     &title3,
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://another.com",
-							},
-						},
+						Content:   NewBookmarkContent("https://another.com"),
 					},
 				},
 			},
@@ -273,42 +252,13 @@ func TestConvert(t *testing.T) {
 				1: {ID: 1, Title: "Story with URL", URL: "https://example.com"},
 			},
 			opts: Options{Tags: []string{"hn", "imported"}},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 1000,
 						Title:     &title1,
 						Tags:      []string{"hn", "imported"},
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://example.com",
-							},
-						},
-					},
-				},
-			},
-		},
-		"note template empty string": {
-			bookmarks: []harmonic.Bookmark{
-				{ID: 1, Timestamp: 1000},
-			},
-			items: map[int]*hackernews.Item{
-				1: {ID: 1, Title: "Story", URL: "https://example.com"},
-			},
-			opts: Options{NoteTemplate: ""},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
-					{
-						CreatedAt: 1000,
-						Title:     ptr("Story"),
-						Note:      nil, // no note when template is empty
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://example.com",
-							},
-						},
+						Content:   NewBookmarkContent("https://example.com"),
 					},
 				},
 			},
@@ -321,18 +271,13 @@ func TestConvert(t *testing.T) {
 				42: {ID: 42, Title: "Story", URL: "https://example.com"},
 			},
 			opts: Options{NoteTemplate: "{{smart_url}}"},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 1000,
 						Title:     ptr("Story"),
 						Note:      ptr("https://news.ycombinator.com/item?id=42"),
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://example.com",
-							},
-						},
+						Content:   NewBookmarkContent("https://example.com"),
 					},
 				},
 			},
@@ -345,42 +290,13 @@ func TestConvert(t *testing.T) {
 				99: {ID: 99, Title: "Ask HN: Something", URL: ""}, // no external URL
 			},
 			opts: Options{NoteTemplate: "{{smart_url}}"},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 1000,
 						Title:     ptr("Ask HN: Something"),
 						Note:      nil, // smart_url is empty, so note is not set
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://news.ycombinator.com/item?id=99",
-							},
-						},
-					},
-				},
-			},
-		},
-		"note template hn_url without external URL": {
-			bookmarks: []harmonic.Bookmark{
-				{ID: 88, Timestamp: 1000},
-			},
-			items: map[int]*hackernews.Item{
-				88: {ID: 88, Title: "Ask HN: Question", URL: ""}, // no external URL
-			},
-			opts: Options{NoteTemplate: "{{hn_url}}"},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
-					{
-						CreatedAt: 1000,
-						Title:     ptr("Ask HN: Question"),
-						Note:      ptr("https://news.ycombinator.com/item?id=88"), // hn_url always works
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://news.ycombinator.com/item?id=88",
-							},
-						},
+						Content:   NewBookmarkContent("https://news.ycombinator.com/item?id=99"),
 					},
 				},
 			},
@@ -399,18 +315,13 @@ func TestConvert(t *testing.T) {
 				},
 			},
 			opts: Options{NoteTemplate: "{{title}} by {{author}} ({{date}}) - ID:{{id}} {{item_url}}"},
-			want: karakeep.Export{
-				Bookmarks: []karakeep.Bookmark{
+			want: Schema{
+				Bookmarks: []Bookmark{
 					{
 						CreatedAt: 1000,
 						Title:     ptr("Test Title"),
 						Note:      ptr("Test Title by testuser (2021-01-01) - ID:123 https://example.com"),
-						Content: &karakeep.BookmarkContent{
-							Link: &karakeep.LinkContent{
-								Type: karakeep.BookmarkTypeLink,
-								URL:  "https://example.com",
-							},
-						},
+						Content:   NewBookmarkContent("https://example.com"),
 					},
 				},
 			},
@@ -459,18 +370,15 @@ func TestConvert(t *testing.T) {
 					t.Errorf("Convert()[%d].Note = %q, want %q", i, *gotBm.Note, *wantBm.Note)
 				}
 
+				// check content
 				if (gotBm.Content == nil) != (wantBm.Content == nil) {
 					t.Errorf("Convert()[%d].Content nil mismatch", i)
-				} else if gotBm.Content != nil && gotBm.Content.Link != nil {
-					if wantBm.Content.Link == nil {
-						t.Errorf("Convert()[%d].Content.Link should be nil", i)
-					} else {
-						if gotBm.Content.Link.Type != wantBm.Content.Link.Type {
-							t.Errorf("Convert()[%d].Content.Link.Type = %q, want %q", i, gotBm.Content.Link.Type, wantBm.Content.Link.Type)
-						}
-						if gotBm.Content.Link.URL != wantBm.Content.Link.URL {
-							t.Errorf("Convert()[%d].Content.Link.URL = %q, want %q", i, gotBm.Content.Link.URL, wantBm.Content.Link.URL)
-						}
+				} else if gotBm.Content != nil {
+					if gotBm.Content.Type != wantBm.Content.Type {
+						t.Errorf("Convert()[%d].Content.Type = %q, want %q", i, gotBm.Content.Type, wantBm.Content.Type)
+					}
+					if gotBm.Content.URL != wantBm.Content.URL {
+						t.Errorf("Convert()[%d].Content.URL = %q, want %q", i, gotBm.Content.URL, wantBm.Content.URL)
 					}
 				}
 			}

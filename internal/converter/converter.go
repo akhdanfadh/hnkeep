@@ -11,7 +11,6 @@ import (
 
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
-	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 )
 
 // Options represents additional options for the conversion process.
@@ -169,8 +168,8 @@ func (c *Converter) FetchItems(ctx context.Context, bookmarks []harmonic.Bookmar
 
 // Convert converts the fetched items and bookmarks into Karakeep export format.
 // Returns the export and the number of duplicate URLs that were merged.
-func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hackernews.Item, opts Options) (karakeep.Export, int) {
-	var export karakeep.Export
+func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hackernews.Item, opts Options) (Schema, int) {
+	var export Schema
 	seenURLs := make(map[string]int) // url -> index in export.Bookmarks
 	dedupedCount := 0
 
@@ -225,16 +224,11 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 		}
 
 		// build struct
-		kb := karakeep.Bookmark{
+		kb := Bookmark{
 			CreatedAt: bm.Timestamp,
 			Title:     &item.Title,
-			Content: &karakeep.BookmarkContent{
-				Link: &karakeep.LinkContent{
-					Type: karakeep.BookmarkTypeLink,
-					URL:  url,
-				},
-			},
-			Tags: opts.Tags,
+			Content:   NewBookmarkContent(url),
+			Tags:      opts.Tags,
 		}
 
 		if note != "" { // avoid empty rendered note

@@ -12,6 +12,7 @@ import (
 	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
+	"github.com/akhdanfadh/hnkeep/internal/logger"
 )
 
 // readInput reads the input from the specified path or stdin if the path is empty.
@@ -120,7 +121,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// configure logger and clients
-	logger := NewLogger(os.Stderr, cfg.Quiet)
+	logger := logger.NewStdLogger(os.Stderr, cfg.Quiet)
 	client := hackernews.NewClient()
 	var fetcher converter.ItemFetcher = client
 

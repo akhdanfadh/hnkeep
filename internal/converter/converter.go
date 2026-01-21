@@ -11,6 +11,7 @@ import (
 
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
+	"github.com/akhdanfadh/hnkeep/internal/logger"
 )
 
 // Options represents additional options for the conversion process.
@@ -28,13 +29,6 @@ type ItemFetcher interface {
 	GetItem(ctx context.Context, id int) (*hackernews.Item, error)
 }
 
-// Logger defines the interface for logging messages.
-type Logger interface {
-	Info(format string, args ...any)
-	Warn(format string, args ...any)
-	Error(format string, args ...any)
-}
-
 const defaultConcurrency = 5
 
 // getDefaultFetcher returns the default Hacker News client (item fetcher).
@@ -42,18 +36,11 @@ func getDefaultFetcher() ItemFetcher {
 	return hackernews.NewClient()
 }
 
-// noopLogger is a do-nothing Logger (null object pattern).
-type noopLogger struct{}
-
-func (noopLogger) Info(string, ...any)  {}
-func (noopLogger) Warn(string, ...any)  {}
-func (noopLogger) Error(string, ...any) {}
-
 // Converter represents the conversion pipeline orchestrator.
 type Converter struct {
 	fetcher     ItemFetcher
 	concurrency int
-	logger      Logger
+	logger      logger.Logger
 }
 
 // Option configures the Converter.
@@ -64,7 +51,7 @@ func New(opts ...Option) *Converter {
 	c := &Converter{
 		fetcher:     getDefaultFetcher(),
 		concurrency: defaultConcurrency,
-		logger:      &noopLogger{},
+		logger:      logger.Noop(),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -87,7 +74,7 @@ func WithConcurrency(n int) Option {
 }
 
 // WithLogger sets the logger for info/warn/error messages.
-func WithLogger(l Logger) Option {
+func WithLogger(l logger.Logger) Option {
 	return func(c *Converter) {
 		c.logger = l
 	}

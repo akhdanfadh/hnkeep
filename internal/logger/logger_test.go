@@ -1,4 +1,4 @@
-package cli
+package logger
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 
 func TestLoggerInfo(t *testing.T) {
 	var buf bytes.Buffer
-	logger := NewLogger(&buf, false)
+	logger := NewStdLogger(&buf, false)
 	logger.Info("test message: %s", "hello")
 
 	got := buf.String()
@@ -21,7 +21,7 @@ func TestLoggerInfo(t *testing.T) {
 
 func TestLoggerWarn(t *testing.T) {
 	var buf bytes.Buffer
-	logger := NewLogger(&buf, false)
+	logger := NewStdLogger(&buf, false)
 	logger.Warn("test message: %s", "hello")
 
 	got := buf.String()
@@ -33,7 +33,7 @@ func TestLoggerWarn(t *testing.T) {
 
 func TestLoggerError(t *testing.T) {
 	var buf bytes.Buffer
-	logger := NewLogger(&buf, false)
+	logger := NewStdLogger(&buf, false)
 	logger.Error("test message: %s", "hello")
 
 	got := buf.String()
@@ -45,7 +45,7 @@ func TestLoggerError(t *testing.T) {
 
 func TestLoggerQuietMode(t *testing.T) {
 	var buf bytes.Buffer
-	logger := NewLogger(&buf, true)
+	logger := NewStdLogger(&buf, true)
 	logger.Info("this should be suppressed")
 	logger.Warn("this should appear")
 	logger.Error("this should also appear")
@@ -64,7 +64,7 @@ func TestLoggerQuietMode(t *testing.T) {
 
 func TestLoggerConcurrentWrites(t *testing.T) {
 	var buf bytes.Buffer
-	logger := NewLogger(&buf, false)
+	logger := NewStdLogger(&buf, false)
 
 	var wg sync.WaitGroup
 	iterations := 100

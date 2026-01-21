@@ -371,15 +371,11 @@ func TestConvert(t *testing.T) {
 				}
 
 				// check content
-				if (gotBm.Content == nil) != (wantBm.Content == nil) {
-					t.Errorf("Convert()[%d].Content nil mismatch", i)
-				} else if gotBm.Content != nil {
-					if gotBm.Content.Type != wantBm.Content.Type {
-						t.Errorf("Convert()[%d].Content.Type = %q, want %q", i, gotBm.Content.Type, wantBm.Content.Type)
-					}
-					if gotBm.Content.URL != wantBm.Content.URL {
-						t.Errorf("Convert()[%d].Content.URL = %q, want %q", i, gotBm.Content.URL, wantBm.Content.URL)
-					}
+				if gotBm.Content.Type != wantBm.Content.Type {
+					t.Errorf("Convert()[%d].Content.Type = %q, want %q", i, gotBm.Content.Type, wantBm.Content.Type)
+				}
+				if gotBm.Content.URL != wantBm.Content.URL {
+					t.Errorf("Convert()[%d].Content.URL = %q, want %q", i, gotBm.Content.URL, wantBm.Content.URL)
 				}
 			}
 		})

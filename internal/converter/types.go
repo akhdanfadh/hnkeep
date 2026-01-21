@@ -10,11 +10,11 @@ type Schema struct {
 
 // Bookmark represents a single bookmark in the Karakeep export/import file.
 type Bookmark struct {
-	CreatedAt int64            `json:"createdAt"` // Unix timestamp (in seconds)
-	Title     *string          `json:"title"`     // Nullable
-	Tags      BookmarkTags     `json:"tags"`      // Empty array if no tags
-	Content   *BookmarkContent `json:"content"`   // Always link type, nullable
-	Note      *string          `json:"note"`      // Nullable
+	CreatedAt int64           `json:"createdAt"` // Unix timestamp (in seconds)
+	Title     *string         `json:"title"`     // Nullable
+	Tags      BookmarkTags    `json:"tags"`      // Empty array if no tags
+	Content   BookmarkContent `json:"content"`   // Always link type
+	Note      *string         `json:"note"`      // Nullable
 }
 
 // BookmarkTags is a custom type to handle marshaling empty arrays instead of null.
@@ -36,6 +36,6 @@ type BookmarkContent struct {
 }
 
 // NewBookmarkContent creates a new BookmarkContent with the given URL and the type field pre-set.
-func NewBookmarkContent(url string) *BookmarkContent {
-	return &BookmarkContent{Type: "link", URL: url}
+func NewBookmarkContent(url string) BookmarkContent {
+	return BookmarkContent{Type: "link", URL: url}
 }

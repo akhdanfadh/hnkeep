@@ -10,6 +10,7 @@ import (
 
 // stats tracks bookmark counts at each pipeline stage and timing statistics.
 type stats struct {
+	// converter stats
 	found       int
 	afterFilter int
 	afterLimit  int
@@ -17,10 +18,17 @@ type stats struct {
 	converted   int
 	deduped     int
 	cacheHits   int
+	totalStart  time.Time
+	fetchStart  time.Time
+	fetchEnd    time.Time
 
-	totalStart time.Time
-	fetchStart time.Time
-	fetchEnd   time.Time
+	// sync stats
+	syncCreated int
+	syncUpdated int
+	syncSkipped int
+	syncFailed  int
+	syncStart   time.Time
+	syncEnd     time.Time
 }
 
 func (s *stats) totalDuration() time.Duration {
@@ -38,6 +46,10 @@ func (s *stats) avgFetchTime() time.Duration {
 	return s.fetchDuration() / time.Duration(s.afterLimit)
 }
 
+func (s *stats) syncDuration() time.Duration {
+	return s.syncEnd.Sub(s.syncStart)
+}
+
 // printPipelineStats prints the common pipeline statistics (found, filtered, limited)
 func printPipelineStats(stats stats) {
 	fmt.Fprintf(os.Stderr, "Bookmarks found : %d\n", stats.found)
@@ -53,6 +65,7 @@ func printPipelineStats(stats stats) {
 	}
 }
 
+// printSummary prints statistics about the conversion operation.
 func printSummary(stats stats) {
 	fmt.Fprintf(os.Stderr, "\n=== Summary ===\n")
 	printPipelineStats(stats)
@@ -79,6 +92,41 @@ func printSummary(stats stats) {
 	if stats.afterLimit > 0 {
 		fmt.Fprintf(os.Stderr, "  Avg per fetch : %dms\n", stats.avgFetchTime().Milliseconds())
 	}
+}
+
+// printSyncSummary prints statistics about the sync operation.
+func printSyncSummary(stats stats) {
+	fmt.Fprintf(os.Stderr, "\n=== Sync Summary ===\n")
+	printPipelineStats(stats)
+
+	if stats.skipped > 0 {
+		fmt.Fprintf(os.Stderr, "  Fetch skipped : -%d   (deleted/dead/not found)\n", stats.skipped)
+	}
+
+	if stats.deduped > 0 {
+		fmt.Fprintf(os.Stderr, "  Deduplicated  : -%d   (merged duplicate URLs)\n", stats.deduped)
+	}
+
+	fmt.Fprintf(os.Stderr, "Converted       : %d\n", stats.converted)
+
+	if stats.cacheHits > 0 || stats.afterLimit > stats.cacheHits {
+		fromAPI := stats.afterLimit - stats.cacheHits
+		fmt.Fprintf(os.Stderr, "  From cache    : %d\n", stats.cacheHits)
+		fmt.Fprintf(os.Stderr, "  From API      : %d\n", fromAPI)
+	}
+
+	fmt.Fprintf(os.Stderr, "\nSync results:\n")
+	fmt.Fprintf(os.Stderr, "  Created       : %d\n", stats.syncCreated)
+	fmt.Fprintf(os.Stderr, "  Updated       : %d\n", stats.syncUpdated)
+	fmt.Fprintf(os.Stderr, "  Skipped       : %d   (already up-to-date)\n", stats.syncSkipped)
+	if stats.syncFailed > 0 {
+		fmt.Fprintf(os.Stderr, "  Failed        : %d\n", stats.syncFailed)
+	}
+
+	fmt.Fprintf(os.Stderr, "\nTiming:\n")
+	fmt.Fprintf(os.Stderr, "  Total time    : %.2fs\n", stats.totalDuration().Seconds())
+	fmt.Fprintf(os.Stderr, "  Fetch time    : %.2fs\n", stats.fetchDuration().Seconds())
+	fmt.Fprintf(os.Stderr, "  Sync time     : %.2fs\n", stats.syncDuration().Seconds())
 }
 
 // printDryRunMode prints statistics about the bookmarks without making any API calls.

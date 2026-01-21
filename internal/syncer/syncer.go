@@ -77,8 +77,21 @@ type SyncError struct {
 }
 
 // Error implements the error interface for SyncError.
-func (e *SyncError) Error() string {
+func (e SyncError) Error() string {
 	return fmt.Sprintf("syncing bookmark %q: %v", e.URL, e.Err)
+}
+
+// Unwrap returns the underlying error for use with errors.Is and errors.As.
+//
+// NOTE: Unwrap is part of Go's error wrapping convention. By implementing this,
+// we allow callers to inspect the underlying error using errors.Is(err, target)
+// and errors.As(err, &target) to extract typed errors from the chain.
+// Without Unwrap, a SyncError would be opaque and callers couldn't check what
+// caused the sync failure. This is important for graceful shutdown detection.
+// - https://go.dev/blog/go1.13-errors
+// - https://pkg.go.dev/errors#Unwrap
+func (e SyncError) Unwrap() error {
+	return e.Err
 }
 
 // Sync synchronizes the given converted bookmarks to Karakeep.
@@ -121,7 +134,7 @@ func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) (map[
 			}
 
 			n := counter.Add(1)
-			s.logger.Info("(sync) processed %d/%d bookmarks", n, total)
+			s.logger.Info("pushed %d/%d", n, total)
 			syncTaskCh <- syncTaskResult{url: bookmark.Content.URL, status: status, err: err}
 		}(bm)
 	}
@@ -139,6 +152,7 @@ func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) (map[
 		case SyncFailed:
 			status[SyncFailed]++
 			errs = append(errs, SyncError{URL: r.url, Err: r.err})
+			s.logger.Warn("failed to push %s: %v", r.url, r.err)
 		case SyncCreated:
 			status[SyncCreated]++
 		case SyncUpdated:

@@ -40,30 +40,38 @@ go build -o hnkeep ./cmd/hnkeep
 ## Usage
 
 ```sh
-# file to file
+# file to file (generates Karakeep import JSON)
 hnkeep -i harmonic-export.txt -o karakeep-import.json
 
 # piping and redirection (warnings/errors to stderr)
 cat harmonic-export.txt | hnkeep > karakeep-import.json
+
+# sync mode: push directly to Karakeep API
+export KARAKEEP_API_URL=https://your-karakeep-server/api/v1
+export KARAKEEP_API_KEY=your-api-key
+hnkeep -i harmonic-export.txt --sync
 ```
 
-| Flag                | Default                                        | Description                                        |
-| ------------------- | ---------------------------------------------- | -------------------------------------------------- |
-| `-v, --version`     |                                                | Show version information                           |
-| `-i, --input`       | stdin                                          | Input file (Harmonic export)                       |
-| `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                        |
-| `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only) |
-| `--dry-run`         |                                                | Preview conversion without HN API calls            |
-| `--before`          |                                                | Only include bookmarks before this date            |
-| `--after`           |                                                | Only include bookmarks after this date             |
-| `-n, --limit`       | 0                                              | Number of bookmarks to process (0 = all)           |
-| `-c, --concurrency` | 5                                              | Number of concurrent HN API requests               |
-| `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks             |
-| `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                   |
-| `--no-dedupe`       |                                                | Keep duplicate URLs instead of merging them        |
-| `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                   |
-| `--no-cache`        |                                                | Disable caching of HN API responses                |
-| `--clear-cache`     |                                                | Clear the cache before running                     |
+| Flag                | Default                                        | Description                                          |
+| ------------------- | ---------------------------------------------- | ---------------------------------------------------- |
+| `-v, --version`     |                                                | Show version information                             |
+| `-i, --input`       | stdin                                          | Input file (Harmonic export)                         |
+| `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                          |
+| `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only)   |
+| `--dry-run`         |                                                | Preview conversion without HN API calls              |
+| `--before`          |                                                | Only include bookmarks before this date              |
+| `--after`           |                                                | Only include bookmarks after this date               |
+| `-n, --limit`       | 0                                              | Number of bookmarks to process (0 = all)             |
+| `-c, --concurrency` | 5                                              | Number of concurrent API calls                       |
+| `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks               |
+| `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                     |
+| `--no-dedupe`       |                                                | Keep duplicate URLs instead of merging them          |
+| `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                     |
+| `--no-cache`        |                                                | Disable caching of HN API responses                  |
+| `--clear-cache`     |                                                | Clear the cache before running                       |
+| `--sync`            |                                                | Sync directly to Karakeep API (instead of JSON file) |
+| `--api-url`         | env `KARAKEEP_API_URL`                         | Karakeep API base URL (required for sync)            |
+| `--api-key`         | env `KARAKEEP_API_KEY`                         | Karakeep API key (required for sync)                 |
 
 ### Implementation notes
 
@@ -74,6 +82,8 @@ cat harmonic-export.txt | hnkeep > karakeep-import.json
 - Duplicate URLs (multiple HN submissions with the same URL) are merged into a single bookmark by default. The first occurrence (by bookmark save time, not HN submission time) is kept with its title and timestamp, and notes from duplicates are appended with a `---` separator. Use `--no-dedupe` to keep all duplicates.
 
 - When syncing to Karakeep (if a bookmark URL already exists), notes are merged using content-based deduplication: if the existing note already contains the incoming note text, no update is made. This ensures multiple sync runs are idempotent without adding timestamp markers or hashes to notes. The tradeoff is that if you manually edit a note in Karakeep to remove imported content, a subsequent sync may re-append it.
+
+- Sync mode (`--sync`) and file output (`--output`) are mutually exclusive. When `--sync` is enabled, bookmarks are pushed directly to Karakeep and no JSON file is written.
 
 - For note template, the following variables are available (use `--note-template ""` to disable notes entirely):
 

@@ -12,7 +12,9 @@ import (
 	"github.com/akhdanfadh/hnkeep/internal/converter"
 	"github.com/akhdanfadh/hnkeep/internal/hackernews"
 	"github.com/akhdanfadh/hnkeep/internal/harmonic"
+	"github.com/akhdanfadh/hnkeep/internal/karakeep"
 	"github.com/akhdanfadh/hnkeep/internal/logger"
+	"github.com/akhdanfadh/hnkeep/internal/syncer"
 )
 
 // readInput reads the input from the specified path or stdin if the path is empty.
@@ -166,6 +168,44 @@ func Run(ctx context.Context) error {
 	stats.deduped = dedupedCount
 	stats.converted = len(export.Bookmarks)
 
+	// sync mode: push directly to Karakeep API
+	if cfg.Sync {
+		if cfg.OutputPath != "" {
+			fmt.Fprintf(os.Stderr, "Warning: --output is ignored in sync mode\n")
+		}
+
+		karakeepClient := karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey)
+		sync := syncer.New(
+			karakeepClient,
+			syncer.WithConcurrency(cfg.Concurrency),
+			syncer.WithLogger(logger),
+		)
+
+		stats.syncStart = time.Now()
+		syncStatus, syncErrs := sync.Sync(ctx, export.Bookmarks)
+		stats.syncEnd = time.Now()
+
+		stats.syncCreated = syncStatus[syncer.SyncCreated]
+		stats.syncUpdated = syncStatus[syncer.SyncUpdated]
+		stats.syncSkipped = syncStatus[syncer.SyncSkipped]
+		stats.syncFailed = syncStatus[syncer.SyncFailed]
+
+		if !cfg.Quiet {
+			printSyncSummary(stats)
+		}
+
+		// print sync errors
+		if len(syncErrs) > 0 {
+			fmt.Fprintf(os.Stderr, "\nSync errors:\n")
+			for _, e := range syncErrs {
+				fmt.Fprintf(os.Stderr, "  - %s: %v\n", e.URL, e.Err)
+			}
+		}
+
+		return nil
+	}
+
+	// default mode: write to file/stdout
 	if err := writeOutput(cfg.OutputPath, export); err != nil {
 		return fmt.Errorf("writing output: %w", err)
 	}

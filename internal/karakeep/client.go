@@ -137,6 +137,17 @@ func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, 
 	return fmt.Errorf("failed after %d attempts: %w", c.maxRetries, lastErr)
 }
 
+// CheckConnectivity verifies the API is reachable and the API key is valid.
+// This is a lightweight pre-flight check that calls GET /users/me.
+func (c *Client) CheckConnectivity(ctx context.Context) error {
+	return c.doRequestWithRetries(ctx, http.MethodGet, "/users/me", nil, func(resp *http.Response) error {
+		if resp.StatusCode != http.StatusOK {
+			return readHTTPError(resp)
+		}
+		return nil
+	})
+}
+
 // doRequest performs a single HTTP request.
 func (c *Client) doRequest(ctx context.Context, method, url string, body []byte, handleResp func(*http.Response) error) error {
 	var bodyReader io.Reader

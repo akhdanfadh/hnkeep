@@ -58,7 +58,7 @@ hnkeep -i harmonic-export.txt --sync
 | `-i, --input`       | stdin                                          | Input file (Harmonic export)                         |
 | `-o, --output`      | stdout                                         | Output file (Karakeep JSON)                          |
 | `-q, --quiet`       |                                                | Suppress info messages (show warnings/errors only)   |
-| `--dry-run`         |                                                | Preview conversion without HN API calls              |
+| `--dry-run`         |                                                | Preview conversion without API calls                 |
 | `--before`          |                                                | Only include bookmarks before this date              |
 | `--after`           |                                                | Only include bookmarks after this date               |
 | `-n, --limit`       | 0                                              | Number of bookmarks to process (0 = all)             |
@@ -84,6 +84,8 @@ hnkeep -i harmonic-export.txt --sync
 - When syncing to Karakeep (if a bookmark URL already exists), notes are merged using content-based deduplication: if the existing note already contains the incoming note text, no update is made. This ensures multiple sync runs are idempotent without adding timestamp markers or hashes to notes. The tradeoff is that if you manually edit a note in Karakeep to remove imported content, a subsequent sync may re-append it.
 
 - Sync mode (`--sync`) and file output (`--output`) are mutually exclusive. When `--sync` is enabled, bookmarks are pushed directly to Karakeep and no JSON file is written.
+
+- Sync mode performs a pre-flight connectivity check before any expensive operations. This validates both the API URL and key are correct. Use `--dry-run --sync` to verify your Karakeep configuration without actually syncing.
 
 - For note template, the following variables are available (use `--note-template ""` to disable notes entirely):
 

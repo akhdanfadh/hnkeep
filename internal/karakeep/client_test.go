@@ -169,3 +169,62 @@ func TestNewClient_TrimsTrailingSlash(t *testing.T) {
 		t.Errorf("baseURL = %q, want trailing slash trimmed", client.baseURL)
 	}
 }
+
+func TestClient_CheckConnectivity(t *testing.T) {
+	tests := map[string]struct {
+		statusCode int
+		wantErr    bool
+		errContain string
+	}{
+		"success": {
+			statusCode: http.StatusOK,
+		},
+		"unauthorized": {
+			statusCode: http.StatusUnauthorized,
+			wantErr:    true,
+			errContain: "unauthorized",
+		},
+		"server error": {
+			statusCode: http.StatusInternalServerError,
+			wantErr:    true,
+			errContain: "failed after",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// verify it's hitting the correct endpoint
+				if r.URL.Path != "/users/me" {
+					t.Errorf("unexpected path: %s, want /users/me", r.URL.Path)
+				}
+				if r.Method != http.MethodGet {
+					t.Errorf("unexpected method: %s, want GET", r.Method)
+				}
+				w.WriteHeader(tc.statusCode)
+			}))
+			defer server.Close()
+
+			client := NewClient(server.URL, "test-api-key",
+				WithHTTPClient(server.Client()),
+				WithMaxRetries(3),
+				WithRetryWait(0),
+			)
+
+			err := client.CheckConnectivity(context.Background())
+
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("expected error, got nil")
+				}
+				if tc.errContain != "" && !strings.Contains(err.Error(), tc.errContain) {
+					t.Errorf("expected error to contain %q, got %q", tc.errContain, err.Error())
+				}
+			} else {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}

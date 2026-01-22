@@ -130,7 +130,7 @@ func printSyncSummary(stats stats) {
 }
 
 // printDryRunMode prints statistics about the bookmarks without making any API calls.
-func printDryRunMode(stats stats, bookmarks []harmonic.Bookmark) {
+func printDryRunMode(stats stats, bookmarks []harmonic.Bookmark, syncMode bool) {
 	fmt.Fprintf(os.Stderr, "=== Dry Run ===\n")
 	printPipelineStats(stats)
 	fmt.Fprintf(os.Stderr, "To process      : %d\n", stats.afterLimit)
@@ -152,5 +152,9 @@ func printDryRunMode(stats stats, bookmarks []harmonic.Bookmark) {
 		fmt.Fprintf(os.Stderr, "  Newest        : %s\n", time.Unix(maxTS, 0).UTC().Format("2006-01-02"))
 	}
 
-	fmt.Fprintf(os.Stderr, "\nNo API calls made.\n")
+	if syncMode {
+		fmt.Fprintf(os.Stderr, "\nWould sync %d bookmarks to Karakeep.\n", stats.afterLimit)
+	} else {
+		fmt.Fprintf(os.Stderr, "\nNo API calls made.\n")
+	}
 }

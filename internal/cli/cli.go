@@ -116,9 +116,28 @@ func Run(ctx context.Context) error {
 	}
 	stats.afterLimit = len(bookmarks)
 
+	// pre-flight connectivity check for sync mode (includes dry-run)
+	var karakeepClient *karakeep.Client
+	if cfg.Sync {
+		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey)
+
+		if !cfg.Quiet {
+			fmt.Fprintf(os.Stderr, "Checking Karakeep API connectivity... ")
+		}
+		if err := karakeepClient.CheckConnectivity(ctx); err != nil {
+			if !cfg.Quiet {
+				fmt.Fprintf(os.Stderr, "failed\n")
+			}
+			return fmt.Errorf("karakeep API check failed: %w", err)
+		}
+		if !cfg.Quiet {
+			fmt.Fprintf(os.Stderr, "ok\n")
+		}
+	}
+
 	// dry run mode: give stats on the input and exit
 	if cfg.DryRun {
-		printDryRunMode(stats, bookmarks)
+		printDryRunMode(stats, bookmarks, cfg.Sync)
 		return nil
 	}
 
@@ -174,7 +193,8 @@ func Run(ctx context.Context) error {
 			fmt.Fprintf(os.Stderr, "Warning: --output is ignored in sync mode\n")
 		}
 
-		karakeepClient := karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
+		// add logger to the existing client (created during connectivity check)
+		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
 			karakeep.WithLogger(logger),
 		)
 		sync := syncer.New(

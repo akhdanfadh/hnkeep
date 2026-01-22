@@ -121,16 +121,16 @@ func Run(ctx context.Context) error {
 	if cfg.Sync {
 		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey)
 
-		if !cfg.Quiet {
+		if cfg.Verbose {
 			fmt.Fprintf(os.Stderr, "Checking Karakeep API connectivity... ")
 		}
 		if err := karakeepClient.CheckConnectivity(ctx); err != nil {
-			if !cfg.Quiet {
+			if cfg.Verbose {
 				fmt.Fprintf(os.Stderr, "failed\n")
 			}
 			return fmt.Errorf("karakeep API check failed: %w", err)
 		}
-		if !cfg.Quiet {
+		if cfg.Verbose {
 			fmt.Fprintf(os.Stderr, "ok\n")
 		}
 	}
@@ -142,7 +142,7 @@ func Run(ctx context.Context) error {
 	}
 
 	// configure logger and clients
-	logger := logger.NewStdLogger(os.Stderr, cfg.Quiet)
+	logger := logger.NewStdLogger(os.Stderr, !cfg.Verbose)
 	client := hackernews.NewClient(hackernews.WithLogger(logger))
 	var fetcher converter.ItemFetcher = client
 
@@ -212,9 +212,7 @@ func Run(ctx context.Context) error {
 		stats.syncSkipped = syncStatus[syncer.SyncSkipped]
 		stats.syncFailed = syncStatus[syncer.SyncFailed]
 
-		if !cfg.Quiet {
-			printSyncSummary(stats)
-		}
+		printSyncSummary(stats)
 
 		// print sync errors
 		if len(syncErrs) > 0 {
@@ -232,8 +230,6 @@ func Run(ctx context.Context) error {
 		return fmt.Errorf("writing output: %w", err)
 	}
 
-	if !cfg.Quiet {
-		printSummary(stats)
-	}
+	printSummary(stats)
 	return nil
 }

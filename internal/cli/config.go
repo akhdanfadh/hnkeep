@@ -18,7 +18,7 @@ var (
 type Config struct {
 	InputPath    string   // Input file path (default: stdin)
 	OutputPath   string   // Output file path (default: stdout)
-	Quiet        bool     // Suppress informational messages
+	Verbose      bool     // Show progress messages during fetch/sync
 	DryRun       bool     // Preview conversion without API calls
 	Before       int64    // Process only bookmarks before this timestamp (0 = all)
 	After        int64    // Process only bookmarks after this timestamp (0 = all)
@@ -45,8 +45,7 @@ func parseFlags() (*Config, error) {
 	outputPath := flag.String("output", "", "Output file path, e.g., karakeep-import.json (default stdout)")
 	flag.StringVar(outputPath, "o", "", "alias for -output (default stdout)")
 
-	quiet := flag.Bool("quiet", false, "Suppress informational messages (warnings and errors are always shown)")
-	flag.BoolVar(quiet, "q", false, "alias for -quiet")
+	verbose := flag.Bool("verbose", false, "Show progress messages during fetch/sync")
 
 	dryRun := flag.Bool("dry-run", false, "Preview conversion without API calls")
 
@@ -138,7 +137,7 @@ func parseFlags() (*Config, error) {
 	return &Config{
 		InputPath:    *inputPath,
 		OutputPath:   *outputPath,
-		Quiet:        *quiet,
+		Verbose:      *verbose,
 		DryRun:       *dryRun,
 		Before:       beforeTS,
 		After:        afterTS,

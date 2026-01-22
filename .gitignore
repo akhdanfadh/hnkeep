@@ -3,6 +3,7 @@
 /coverage.html
 *.json
 *.txt
+.env
 
 # Added by goreleaser init:
 dist/

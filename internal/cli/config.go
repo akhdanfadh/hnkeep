@@ -79,7 +79,7 @@ func parseFlags() (*Config, error) {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Printf("hnkeep version %s, build %s\n", Version, Commit)
+		_, _ = fmt.Fprintf(os.Stdout, "hnkeep version %s, build %s\n", Version, Commit)
 		os.Exit(0)
 	}
 

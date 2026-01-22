@@ -116,6 +116,12 @@ func Run(ctx context.Context) error {
 	}
 	stats.afterLimit = len(bookmarks)
 
+	// early exit if no bookmarks to process
+	if stats.afterLimit == 0 {
+		fmt.Fprintf(os.Stderr, "Warning: no bookmarks to process (found %d, all filtered out)\n", stats.found)
+		return nil
+	}
+
 	// pre-flight connectivity check for sync mode (includes dry-run)
 	var karakeepClient *karakeep.Client
 	if cfg.Sync {

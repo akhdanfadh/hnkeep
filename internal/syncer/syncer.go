@@ -14,8 +14,10 @@ import (
 )
 
 // noteSeparator is used to join notes when merging with existing Karakeep notes.
-const noteSeparator = "\n\n---\n\n"
-const defaultConcurrency = 5
+const (
+	noteSeparator      = "\n\n---\n\n"
+	defaultConcurrency = 5
+)
 
 // Syncer represents the syncer pipeline orchestrator.
 type Syncer struct {
@@ -128,7 +130,7 @@ func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) (map[
 			}
 
 			status, err := s.syncTask(ctx, bookmark)
-			// don't send result (avoid blocking on full channel)
+			// skip sending result after cancellation
 			if ctx.Err() != nil {
 				return
 			}

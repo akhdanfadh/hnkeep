@@ -41,6 +41,7 @@ type Converter struct {
 	fetcher     ItemFetcher
 	concurrency int
 	logger      logger.Logger
+	progresser  logger.Progresser
 }
 
 // Option configures the Converter.
@@ -77,6 +78,13 @@ func WithConcurrency(n int) Option {
 func WithLogger(l logger.Logger) Option {
 	return func(c *Converter) {
 		c.logger = l
+	}
+}
+
+// WithProgress sets a progresser for progress updates during fetch.
+func WithProgress(p logger.Progresser) Option {
+	return func(c *Converter) {
+		c.progresser = p
 	}
 }
 
@@ -121,6 +129,9 @@ func (c *Converter) FetchItems(ctx context.Context, bookmarks []harmonic.Bookmar
 			}
 
 			n := counter.Add(1)
+			if c.progresser != nil {
+				c.progresser.Update(int(n), total)
+			}
 			c.logger.Info("fetched %d/%d (ID: %d)", n, total, bookmark.ID)
 			results <- result{bookmark: bookmark, item: item, err: err}
 		}(bm)

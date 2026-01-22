@@ -24,6 +24,7 @@ type Syncer struct {
 	client      *karakeep.Client
 	concurrency int
 	logger      logger.Logger
+	progresser  logger.Progresser
 }
 
 // Option configures the Syncer.
@@ -53,6 +54,13 @@ func WithConcurrency(n int) Option {
 func WithLogger(l logger.Logger) Option {
 	return func(c *Syncer) {
 		c.logger = l
+	}
+}
+
+// WithProgress sets a progresser for progress updates during sync.
+func WithProgress(p logger.Progresser) Option {
+	return func(c *Syncer) {
+		c.progresser = p
 	}
 }
 
@@ -124,6 +132,9 @@ func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) (map[
 			}
 
 			n := counter.Add(1)
+			if s.progresser != nil {
+				s.progresser.Update(int(n), total)
+			}
 			s.logger.Info("pushed %d/%d", n, total)
 			syncTaskCh <- syncTaskResult{url: bookmark.Content.URL, status: status, err: err}
 		}(bm)

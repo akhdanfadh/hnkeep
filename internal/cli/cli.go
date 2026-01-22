@@ -87,11 +87,9 @@ func Run(ctx context.Context) error {
 	}
 
 	// if no input data is given and stdin is a terminal, show usage and exit
-	if cfg.InputPath == "" {
-		if stat, _ := os.Stdin.Stat(); (stat.Mode() & os.ModeCharDevice) != 0 {
-			flag.Usage()
-			return nil
-		}
+	if cfg.InputPath == "" && logger.IsTTY(os.Stdin) {
+		flag.Usage()
+		return nil
 	}
 
 	input, err := readInput(cfg.InputPath)
@@ -148,13 +146,13 @@ func Run(ctx context.Context) error {
 	}
 
 	// configure logger and clients
-	logger := logger.NewStdLogger(os.Stderr, !cfg.Verbose)
-	client := hackernews.NewClient(hackernews.WithLogger(logger))
+	log := logger.NewStdLogger(os.Stderr, !cfg.Verbose)
+	client := hackernews.NewClient(hackernews.WithLogger(log))
 	var fetcher converter.ItemFetcher = client
 
 	// use cached client if cache dir is set
 	if cfg.CacheDir != "" {
-		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir, hackernews.WithCacheLogger(logger))
+		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir, hackernews.WithCacheLogger(log))
 		if err != nil {
 			return fmt.Errorf("creating cached client: %w", err)
 		}
@@ -166,16 +164,26 @@ func Run(ctx context.Context) error {
 		fetcher = cachedClient
 	}
 
+	// setup progress indicator if stderr is a TTY and not verbose (verbose has its own logging)
+	var progressFetch *logger.TTYProgresser
+	if !cfg.Verbose && logger.IsStderrTTY() {
+		progressFetch = logger.NewProgresser(os.Stderr, "Fetching: %d/%d")
+	}
+
 	// perform conversion
 	conv := converter.New(
 		converter.WithFetcher(fetcher),
 		converter.WithConcurrency(cfg.Concurrency),
-		converter.WithLogger(logger),
+		converter.WithLogger(log),
+		converter.WithProgress(progressFetch),
 	)
 
 	stats.fetchStart = time.Now()
 	items, err := conv.FetchItems(ctx, bookmarks)
 	stats.fetchEnd = time.Now()
+	if progressFetch != nil {
+		progressFetch.Clear()
+	}
 	if err != nil {
 		return fmt.Errorf("fetching items: %w", err)
 	}
@@ -199,19 +207,29 @@ func Run(ctx context.Context) error {
 			fmt.Fprintf(os.Stderr, "Warning: --output is ignored in sync mode\n")
 		}
 
+		// setup progress indicator for sync (same condition as fetch)
+		var progressSync *logger.TTYProgresser
+		if !cfg.Verbose && logger.IsStderrTTY() {
+			progressSync = logger.NewProgresser(os.Stderr, "Syncing: %d/%d")
+		}
+
 		// add logger to the existing client (created during connectivity check)
 		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
-			karakeep.WithLogger(logger),
+			karakeep.WithLogger(log),
 		)
 		sync := syncer.New(
 			karakeepClient,
 			syncer.WithConcurrency(cfg.Concurrency),
-			syncer.WithLogger(logger),
+			syncer.WithLogger(log),
+			syncer.WithProgress(progressSync),
 		)
 
 		stats.syncStart = time.Now()
 		syncStatus, syncErrs := sync.Sync(ctx, export.Bookmarks)
 		stats.syncEnd = time.Now()
+		if progressSync != nil {
+			progressSync.Clear()
+		}
 
 		stats.syncCreated = syncStatus[syncer.SyncCreated]
 		stats.syncUpdated = syncStatus[syncer.SyncUpdated]

@@ -30,12 +30,29 @@ func getVersion() string {
 	return version
 }
 
+// getCommit returns the commit hash from build info if available.
+func getCommit() string {
+	// if ldflags set a specific commit, use it
+	if commit != "none" {
+		return commit
+	}
+	// try to get commit from Go module build info
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.revision" {
+				return setting.Value
+			}
+		}
+	}
+	return "unknown"
+}
+
 func main() {
 	// graceful shutdown: cancels context on SIGINT/SIGTERM
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
-	cli.Version, cli.Commit = getVersion(), commit
+	cli.Version, cli.Commit = getVersion(), getCommit()
 	if err := cli.Run(ctx); err != nil {
 		if ctx.Err() != nil {
 			fmt.Fprintln(os.Stderr, "\nInterrupted")

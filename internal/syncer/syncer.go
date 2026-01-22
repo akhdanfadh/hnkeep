@@ -74,26 +74,9 @@ const (
 	SyncSkipped
 )
 
-// SyncError represents an error that occurred during syncing a bookmark.
-type SyncError struct {
-	URL string
-	Err error
-}
-
-// Error implements the error interface for SyncError.
-func (e SyncError) Error() string {
-	return fmt.Sprintf("syncing bookmark %q: %v", e.URL, e.Err)
-}
-
-// Unwrap returns the underlying error for use with errors.Is and errors.As.
-// Actually HTTPError doesn't need Unwrap as it is not wrapping another error,
-// and just has StatusCode and Body fields, but just in case in the future?
-func (e SyncError) Unwrap() error {
-	return e.Err
-}
-
 // Sync synchronizes the given converted bookmarks to Karakeep.
-func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) (map[SyncStatus]int, []SyncError) {
+// Errors are logged inline via the logger; the returned map contains counts per status.
+func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) map[SyncStatus]int {
 	type syncTaskResult struct {
 		url    string
 		status SyncStatus
@@ -147,27 +130,18 @@ func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) (map[
 
 	// process sync results
 	status := make(map[SyncStatus]int)
-	var errs []SyncError
 	for r := range syncTaskCh {
-		switch r.status {
-		case SyncFailed:
-			status[SyncFailed]++
-			errs = append(errs, SyncError{URL: r.url, Err: r.err})
+		status[r.status]++
+		if r.status == SyncFailed {
 			s.logger.Warn("failed to push %s: %v", r.url, r.err)
-		case SyncCreated:
-			status[SyncCreated]++
-		case SyncUpdated:
-			status[SyncUpdated]++
-		case SyncSkipped:
-			status[SyncSkipped]++
 		}
 
 		// check for cancellation after processing
 		if ctx.Err() != nil {
-			return status, errs
+			return status
 		}
 	}
-	return status, errs
+	return status
 }
 
 // syncTask performs the sync operation for a single bookmark.

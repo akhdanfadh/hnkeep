@@ -210,11 +210,7 @@ func TestSync(t *testing.T) {
 			},
 		}
 
-		status, errs := syncer.Sync(context.Background(), bookmarks)
-
-		if len(errs) != 0 {
-			t.Errorf("expected no errors, got %v", errs)
-		}
+		status := syncer.Sync(context.Background(), bookmarks)
 
 		// new.com -> created (201)
 		// existing.com -> updated (note merged)
@@ -253,16 +249,10 @@ func TestSync(t *testing.T) {
 			},
 		}
 
-		status, errs := syncer.Sync(context.Background(), bookmarks)
+		status := syncer.Sync(context.Background(), bookmarks)
 
 		if status[SyncFailed] != 1 {
 			t.Errorf("SyncFailed = %d, want 1", status[SyncFailed])
-		}
-		if len(errs) != 1 {
-			t.Errorf("expected 1 error, got %d", len(errs))
-		}
-		if !strings.Contains(errs[0].Error(), "creating bookmark") {
-			t.Errorf("expected error to contain 'creating bookmark', got %q", errs[0].Error())
 		}
 	})
 
@@ -301,16 +291,10 @@ func TestSync(t *testing.T) {
 			},
 		}
 
-		status, errs := syncer.Sync(context.Background(), bookmarks)
+		status := syncer.Sync(context.Background(), bookmarks)
 
 		if status[SyncFailed] != 1 {
 			t.Errorf("SyncFailed = %d, want 1", status[SyncFailed])
-		}
-		if len(errs) != 1 {
-			t.Errorf("expected 1 error, got %d", len(errs))
-		}
-		if !strings.Contains(errs[0].Error(), "attaching tags") {
-			t.Errorf("expected error to contain 'attaching tags', got %q", errs[0].Error())
 		}
 	})
 
@@ -348,16 +332,10 @@ func TestSync(t *testing.T) {
 			},
 		}
 
-		status, errs := syncer.Sync(context.Background(), bookmarks)
+		status := syncer.Sync(context.Background(), bookmarks)
 
 		if status[SyncFailed] != 1 {
 			t.Errorf("SyncFailed = %d, want 1", status[SyncFailed])
-		}
-		if len(errs) != 1 {
-			t.Errorf("expected 1 error, got %d", len(errs))
-		}
-		if !strings.Contains(errs[0].Error(), "updating bookmark") {
-			t.Errorf("expected error to contain 'updating bookmark', got %q", errs[0].Error())
 		}
 	})
 
@@ -391,16 +369,10 @@ func TestSync(t *testing.T) {
 			},
 		}
 
-		status, errs := syncer.Sync(context.Background(), bookmarks)
+		status := syncer.Sync(context.Background(), bookmarks)
 
 		if status[SyncFailed] != 1 {
 			t.Errorf("SyncFailed = %d, want 1", status[SyncFailed])
-		}
-		if len(errs) != 1 {
-			t.Errorf("expected 1 error, got %d", len(errs))
-		}
-		if !strings.Contains(errs[0].Error(), "parsing existing createdAt") {
-			t.Errorf("expected error to contain 'parsing existing createdAt', got %q", errs[0].Error())
 		}
 	})
 
@@ -448,15 +420,4 @@ func TestSync(t *testing.T) {
 			t.Errorf("expected few requests with cancelled context, got %d", count)
 		}
 	})
-}
-
-func TestSyncError_Error(t *testing.T) {
-	err := &SyncError{URL: "https://example.com", Err: karakeep.ErrUnauthorized}
-	got := err.Error()
-	if !strings.Contains(got, "https://example.com") {
-		t.Errorf("SyncError.Error() should contain URL, got %q", got)
-	}
-	if !strings.Contains(got, "unauthorized") {
-		t.Errorf("SyncError.Error() should contain underlying error, got %q", got)
-	}
 }

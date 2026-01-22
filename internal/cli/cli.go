@@ -225,7 +225,7 @@ func Run(ctx context.Context) error {
 		)
 
 		stats.syncStart = time.Now()
-		syncStatus, syncErrs := sync.Sync(ctx, export.Bookmarks)
+		syncStatus := sync.Sync(ctx, export.Bookmarks)
 		stats.syncEnd = time.Now()
 		if progressSync != nil {
 			progressSync.Clear()
@@ -238,13 +238,9 @@ func Run(ctx context.Context) error {
 
 		printSyncSummary(stats)
 
-		// print sync errors and return error for non-zero exit code
-		if len(syncErrs) > 0 {
-			fmt.Fprintf(os.Stderr, "\nSync errors:\n")
-			for _, e := range syncErrs {
-				fmt.Fprintf(os.Stderr, "  - %s: %v\n", e.URL, e.Err)
-			}
-			return fmt.Errorf("%d bookmark(s) failed to sync", len(syncErrs))
+		// return error for non-zero exit code (details already logged inline)
+		if stats.syncFailed > 0 {
+			return fmt.Errorf("%d bookmark(s) failed to sync", stats.syncFailed)
 		}
 
 		return nil

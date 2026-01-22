@@ -1,12 +1,12 @@
-# hnkeep
+# hnkeep - Sync Hacker News bookmarks from Harmonic-HN to Karakeep
 
 [![Release](https://img.shields.io/github/v/release/akhdanfadh/hnkeep)](https://github.com/akhdanfadh/hnkeep/releases/latest)
 [![Go Version](https://img.shields.io/github/go-mod/go-version/akhdanfadh/hnkeep)](go.mod)
 [![License](https://img.shields.io/github/license/akhdanfadh/hnkeep)](LICENSE)
 
-hnkeep is a CLI tool that enables exporting [Hacker News](https://news.ycombinator.com) bookmarks from [Harmonic-HN](https://play.google.com/store/apps/details?id=com.simon.harmonichackernews) to [Karakeep](https://karakeep.app/). Harmonic-HN is an Android client for Hacker News while Karakeep is a self-hosted bookmark manager.
+hnkeep is a CLI tool that enables syncing [Hacker News](https://news.ycombinator.com) bookmarks from [Harmonic-HN](https://play.google.com/store/apps/details?id=com.simon.harmonichackernews) to [Karakeep](https://karakeep.app/). Harmonic-HN is an Android client for Hacker News while Karakeep is a self-hosted bookmark manager.
 
-hnkeep is designed not for just a single one-time migration, but also for regular occasional exports with the ability to filter Harmonic bookmarks by date. I hope others can find it useful.
+hnkeep is designed not for just a single one-time migration, but also for regular occasional exports. I hope others can find it useful.
 
 I built this because I have been using Harmonic to read HN articles for years and occasionally bookmark posts either to read them later (_uhm..._) or to keep track of interesting content. If you have Android phone and like doom-scrolling HN, I really recommend this app. After 1500+ saved articles, I want to manage and backup these bookmarks somewhere centralized. Karakeep's features (mainly the auto tagging and link rot protection) and its self-hosted nature made it seems like an ideal choice for me.
 
@@ -57,31 +57,31 @@ hnkeep -i harmonic-export.txt -sync
 | `-v, -version`     |                                                | Show version information                             |
 | `-i, -input`       | stdin                                          | Input file (Harmonic export)                         |
 | `-o, -output`      | stdout                                         | Output file (Karakeep JSON)                          |
-| `-verbose`         |                                                | Show progress messages during fetch/sync             |
-| `-dry-run`         |                                                | Preview conversion without API calls                 |
-| `-before`          |                                                | Only include bookmarks before this date              |
-| `-after`           |                                                | Only include bookmarks after this date               |
-| `-n, -limit`       | 0                                              | Number of bookmarks to process (0 = all)             |
+| `-n, -limit`       | 0                                              | Max input bookmarks to process (0 = all)             |
 | `-c, -concurrency` | 5                                              | Number of concurrent API calls                       |
-| `-t, -tags`        | "src:hackernews,hnkeep:YYYYMMDD"               | Comma-separated tags for all bookmarks               |
-| `-note-template`   | "{{smart_url}}"                                | Template for bookmark note field                     |
-| `-no-dedupe`       |                                                | Keep duplicate URLs instead of merging them          |
-| `-cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                     |
-| `-no-cache`        |                                                | Disable caching of HN API responses                  |
-| `-clear-cache`     |                                                | Clear the cache before running                       |
+| `-t, -tags`        | "src:hackernews,hnkeep:YYYYMMDD"               | Tags to apply to output bookmarks                    |
+| `-note-template`   | "{{smart_url}}"                                | Template for output bookmark note field              |
 | `-sync`            |                                                | Sync directly to Karakeep API (instead of JSON file) |
 | `-api-url`         | env `KARAKEEP_API_URL`                         | Karakeep API base URL (required for sync)            |
 | `-api-key`         | env `KARAKEEP_API_KEY`                         | Karakeep API key (required for sync)                 |
+| `-before`          |                                                | Only include input bookmarks before this date        |
+| `-after`           |                                                | Only include input bookmarks after this date         |
+| `-dry-run`         |                                                | Preview conversion without API calls                 |
+| `-verbose`         |                                                | Show progress messages during fetch/sync             |
+| `-no-dedupe`       |                                                | Keep duplicate URLs in input instead of merging      |
+| `-cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                     |
+| `-no-cache`        |                                                | Disable caching of HN API responses                  |
+| `-clear-cache`     |                                                | Clear the cache before running                       |
 
 ### Implementation notes
 
 - By default, the JSON output is written to stdout, while warnings and errors are written to stderr.
 
-- Date filters (`-before`, `-after`) accept: `YYYY-MM-DD`, [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339), or [Unix timestamp](https://www.unixtimestamp.com/) (seconds).
+- Date filters (`-before`, `-after`) accept: `YYYY-MM-DD`, [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339), or [Unix timestamp](https://www.unixtimestamp.com/) (seconds). This could be useful for manually filtering bookmarks during periodic exports.
 
-- Duplicate URLs (multiple HN submissions with the same URL) are merged into a single bookmark by default. The first occurrence (by bookmark save time, not HN submission time) is kept with its title and timestamp, and notes from duplicates are appended with a `---` separator. Use `-no-dedupe` to keep all duplicates.
+- Duplicate URLs (multiple HN submissions with the same URL) are merged into a single output bookmark by default. The first occurrence (by Harmonic save time, not HN submission time) is kept with its title and timestamp, and notes from duplicates are appended with a `---` separator. Use `-no-dedupe` to keep all duplicates.
 
-- When syncing to Karakeep (if a bookmark URL already exists), notes are merged using content-based deduplication: if the existing note already contains the incoming note text, no update is made. This ensures multiple sync runs are idempotent without adding timestamp markers or hashes to notes. The tradeoff is that if you manually edit a note in Karakeep to remove imported content, a subsequent sync may re-append it.
+- When syncing to Karakeep (if a bookmark URL already exists), notes are merged using content-based deduplication: if the existing Karakeep note already contains the incoming note text, no update is made. This ensures multiple sync runs are idempotent without adding timestamp markers or hashes to notes. The tradeoff is that if you manually edit a note in Karakeep to remove imported content, a subsequent sync may re-append it.
 
 - Sync mode (`-sync`) and file output (`-output`) are mutually exclusive. When `-sync` is enabled, bookmarks are pushed directly to Karakeep and no JSON file is written.
 
@@ -98,6 +98,26 @@ hnkeep -i harmonic-export.txt -sync
   | `{{title}}`     | Item title                                                     |
   | `{{author}}`    | Author username                                                |
   | `{{date}}`      | Post date (`YYYY-MM-DD`)                                       |
+
+## Sync and Deduplication
+
+The sync feature (`-sync`) is designed for reliability above all else. The primary use case is running hnkeep repeatedly over time with different or overlapping Harmonic export files, where each sync should produce the same result regardless of how many times it runs or what was synced before. You should be able to export your entire Harmonic bookmark history today, sync it, then export again six months later with new bookmarks accumulated, and sync that file without creating duplicates of the previously imported items.
+
+**Why client-side deduplication is necessary?** Karakeep provides built-in deduplication for link bookmarks by checking if a URL already exists. However, when Karakeep's crawler processes certain URLs, it converts them from link bookmarks to asset bookmarks. This happens for:
+
+- PDFs (`application/pdf`)
+- Images (`image/gif`, `image/jpeg`, `image/png`, `image/webp`)
+
+During this conversion, the bookmark is removed from link storage and moved to asset storage, but Karakeep's deduplication only checks link storage. Submitting the same PDF URL twice will create duplicates because the first one is no longer visible to the deduplication check.
+
+**How hnkeep handles this?** At the start of each sync, hnkeep fetches all existing bookmarks from your Karakeep instance and builds a URL map. For link bookmarks, the URL is stored directly. For asset bookmarks, Karakeep preserves the original source URL in a separate field, which hnkeep extracts. When processing each Harmonic bookmark, hnkeep checks this map first and treats matching URLs as existing bookmarks rather than creating new ones.
+
+The pre-fetch has minimal overhead: Karakeep returns 100 bookmarks per page, so 3,000 bookmarks requires only 30 API calls. The URL map consumes roughly 500KB–1MB of memory. This ensures every create/update/skip decision is made against the actual current state of Karakeep.
+
+**Caveats:**
+
+- If a bookmark is deleted from Karakeep between syncs, the next sync will recreate it. This is intentional as hnkeep treats Harmonic as the source of truth. To prevent recreation, remove the item from your Harmonic export or use date filters to exclude it.
+- If the pre-fetch fails partway through due to network issues, hnkeep may create duplicates for items it failed to fetch. Warnings will be logged, and you can re-run once connectivity is restored.
 
 ## Contributing
 

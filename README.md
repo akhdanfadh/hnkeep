@@ -69,7 +69,6 @@ hnkeep -i harmonic-export.txt -sync
 | `-after`           |                                                | Only include input bookmarks after this date         |
 | `-dry-run`         |                                                | Preview conversion without API calls                 |
 | `-verbose`         |                                                | Show progress messages during fetch/sync             |
-| `-no-dedupe`       |                                                | Keep duplicate URLs in input instead of merging      |
 | `-cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                     |
 | `-no-cache`        |                                                | Disable caching of HN API responses                  |
 | `-clear-cache`     |                                                | Clear the cache before running                       |
@@ -80,7 +79,7 @@ hnkeep -i harmonic-export.txt -sync
 
 - Date filters (`-before`, `-after`) accept: `YYYY-MM-DD`, [RFC3339](https://datatracker.ietf.org/doc/html/rfc3339), or [Unix timestamp](https://www.unixtimestamp.com/) (seconds). This could be useful for manually filtering bookmarks during periodic exports.
 
-- Duplicate URLs (multiple HN submissions with the same URL) are merged into a single output bookmark by default. The first occurrence (by Harmonic save time, not HN submission time) is kept with its title and timestamp, and notes from duplicates are appended with a `---` separator. Use `-no-dedupe` to keep all duplicates.
+- Duplicate URLs (multiple HN submissions with the same URL) are merged into a single output bookmark. The first occurrence (by Harmonic save time, not HN submission time) is kept with its title and timestamp, and notes from duplicates are appended with a `---` separator.
 
 - When syncing to Karakeep (if a bookmark URL already exists), notes are merged using content-based deduplication: if the existing Karakeep note already contains the incoming note text, no update is made. This ensures multiple sync runs are idempotent without adding timestamp markers or hashes to notes. The tradeoff is that if you manually edit a note in Karakeep to remove imported content, a subsequent sync may re-append it.
 

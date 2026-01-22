@@ -18,7 +18,6 @@ import (
 type Options struct {
 	Tags         []string // Tags to apply to all bookmarks
 	NoteTemplate string   // Template for note field (empty = no note)
-	Dedupe       bool     // Merge duplicate URLs, combining their notes
 }
 
 // noteSeparator is used to join notes when merging duplicate URLs.
@@ -204,21 +203,19 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 		}
 
 		// check for duplicate URL
-		if opts.Dedupe {
-			if idx, exists := seenURLs[url]; exists {
-				// merge notes with separator
-				if note != "" {
-					existing := export.Bookmarks[idx]
-					if existing.Note != nil && *existing.Note != "" {
-						merged := *existing.Note + noteSeparator + note
-						export.Bookmarks[idx].Note = &merged
-					} else {
-						export.Bookmarks[idx].Note = &note
-					}
+		if idx, exists := seenURLs[url]; exists {
+			// merge notes with separator
+			if note != "" {
+				existing := export.Bookmarks[idx]
+				if existing.Note != nil && *existing.Note != "" {
+					merged := *existing.Note + noteSeparator + note
+					export.Bookmarks[idx].Note = &merged
+				} else {
+					export.Bookmarks[idx].Note = &note
 				}
-				dedupedCount++
-				continue // skip adding new bookmark
 			}
+			dedupedCount++
+			continue // skip adding new bookmark
 		}
 
 		// build struct
@@ -233,9 +230,7 @@ func (c *Converter) Convert(bookmarks []harmonic.Bookmark, items map[int]*hacker
 			kb.Note = &note
 		}
 
-		if opts.Dedupe {
-			seenURLs[url] = len(export.Bookmarks) // record index
-		}
+		seenURLs[url] = len(export.Bookmarks) // record index for deduplication
 		export.Bookmarks = append(export.Bookmarks, kb)
 	}
 

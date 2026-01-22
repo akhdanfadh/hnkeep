@@ -201,7 +201,6 @@ func Run(ctx context.Context) error {
 	export, dedupedCount := conv.Convert(bookmarks, items, converter.Options{
 		Tags:         cfg.Tags,
 		NoteTemplate: cfg.NoteTemplate,
-		Dedupe:       cfg.Dedupe,
 	})
 	stats.deduped = dedupedCount
 	stats.converted = len(export.Bookmarks)

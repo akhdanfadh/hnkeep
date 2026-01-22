@@ -393,7 +393,7 @@ func TestConvert_Dedupe(t *testing.T) {
 			1: {ID: 1, Title: "First Story", URL: "https://example.com"},
 			2: {ID: 2, Title: "Second Story", URL: "https://example.com"},
 		}
-		opts := Options{Dedupe: true, NoteTemplate: "{{hn_url}}"}
+		opts := Options{NoteTemplate: "{{hn_url}}"}
 
 		got, deduped := c.Convert(bookmarks, items, opts)
 
@@ -421,7 +421,7 @@ func TestConvert_Dedupe(t *testing.T) {
 			2: {ID: 2, Title: "Link to Discussion", URL: "https://news.ycombinator.com/item?id=1"},
 		}
 		// smart_url is empty when item has no external URL
-		opts := Options{Dedupe: true, NoteTemplate: "{{smart_url}}"}
+		opts := Options{NoteTemplate: "{{smart_url}}"}
 
 		got, deduped := c.Convert(bookmarks, items, opts)
 

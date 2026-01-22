@@ -243,6 +243,7 @@ func Run(ctx context.Context) error {
 		syncOpts := []syncer.Option{
 			syncer.WithConcurrency(cfg.Concurrency),
 			syncer.WithLogger(log),
+			syncer.WithExistingBookmarks(existingBookmarks),
 		}
 		if progressSync != nil {
 			syncOpts = append(syncOpts, syncer.WithProgress(progressSync))

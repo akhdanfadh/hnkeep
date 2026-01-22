@@ -199,6 +199,7 @@ func (s *Syncer) syncTask(ctx context.Context, convertedBM converter.Bookmark) (
 	}
 
 	if !alreadyExists {
+		s.logger.Info("created: %s", convertedBM.Content.URL)
 		return SyncCreated, nil
 	}
 
@@ -220,11 +221,13 @@ func (s *Syncer) syncTask(ctx context.Context, convertedBM converter.Bookmark) (
 
 	// decide update or skip
 	if !timestampChanged && !noteChanged {
+		s.logger.Info("skipped: %s", convertedBM.Content.URL)
 		return SyncSkipped, nil
 	}
 	if err := s.client.UpdateBookmark(ctx, karakeepBM.ID, updatedCreatedAt, updatedNote); err != nil {
 		return SyncFailed, fmt.Errorf("updating bookmark: %w", err)
 	}
+	s.logger.Info("updated: %s", convertedBM.Content.URL)
 	return SyncUpdated, nil
 }
 

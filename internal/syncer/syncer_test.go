@@ -420,4 +420,124 @@ func TestSync(t *testing.T) {
 			t.Errorf("expected few requests with cancelled context, got %d", count)
 		}
 	})
+
+	t.Run("skips CreateBookmark API call when URL in pre-fetched map", func(t *testing.T) {
+		var mu sync.Mutex
+		createCalls := 0
+		tagCalls := 0
+		updateCalls := 0
+
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mu.Lock()
+			defer mu.Unlock()
+
+			if r.Method == http.MethodPost && r.URL.Path == "/bookmarks" {
+				createCalls++
+				// this should only be called for urls NOT in pre-fetched map
+				var req karakeep.CreateBookmarkRequest
+				_ = json.NewDecoder(r.Body).Decode(&req)
+				w.WriteHeader(http.StatusCreated)
+				_ = json.NewEncoder(w).Encode(karakeep.CreateBookmarkResponse{
+					ID:        "bm-new",
+					CreatedAt: "2024-01-01T00:00:00Z",
+				})
+				return
+			}
+
+			if r.Method == http.MethodPost && strings.HasSuffix(r.URL.Path, "/tags") {
+				tagCalls++
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			if r.Method == http.MethodPatch {
+				updateCalls++
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+
+			w.WriteHeader(http.StatusNotFound)
+		}))
+		defer server.Close()
+
+		client := karakeep.NewClient(server.URL, "test-key",
+			karakeep.WithHTTPClient(server.Client()),
+			karakeep.WithMaxRetries(1),
+			karakeep.WithRetryWait(0),
+		)
+
+		// pre-fetched map simulates urls already in karakeep
+		existingBookmarks := map[string]karakeep.ExistingBookmark{
+			"https://existing.com": {
+				ID:        "bm-existing",
+				CreatedAt: 1704067200, // 2024-01-01
+				Note:      nil,
+			},
+			"https://existing-with-note.com": {
+				ID:        "bm-with-note",
+				CreatedAt: 1704067200,
+				Note:      ptr("existing note"),
+			},
+		}
+
+		syncer := New(client,
+			WithConcurrency(1),
+			WithExistingBookmarks(existingBookmarks),
+		)
+
+		bookmarks := []converter.Bookmark{
+			{
+				// url in pre-fetch -> should skip CreateBookmark, only call AttachTags
+				CreatedAt: 1704067200,
+				Title:     ptr("Existing"),
+				Content:   converter.NewBookmarkContent("https://existing.com"),
+				Tags:      []string{"tag1"},
+			},
+			{
+				// url NOT in pre-fetch -> should call CreateBookmark
+				CreatedAt: 1704067200,
+				Title:     ptr("New"),
+				Content:   converter.NewBookmarkContent("https://new.com"),
+				Tags:      []string{"tag2"},
+			},
+			{
+				// url in pre-fetch with note merge -> should call UpdateBookmark
+				CreatedAt: 1704067200,
+				Title:     ptr("With note merge"),
+				Content:   converter.NewBookmarkContent("https://existing-with-note.com"),
+				Note:      ptr("new note to merge"),
+			},
+		}
+
+		status := syncer.Sync(context.Background(), bookmarks)
+
+		mu.Lock()
+		defer mu.Unlock()
+
+		// only 1 CreateBookmark call (for new.com), not 3
+		if createCalls != 1 {
+			t.Errorf("CreateBookmark calls = %d, want 1 (pre-fetch should skip 2)", createCalls)
+		}
+
+		// 2 AttachTags calls (existing.com and new.com have tags)
+		if tagCalls != 2 {
+			t.Errorf("AttachTags calls = %d, want 2", tagCalls)
+		}
+
+		// 1 UpdateBookmark call (existing-with-note.com needs note merge)
+		if updateCalls != 1 {
+			t.Errorf("UpdateBookmark calls = %d, want 1", updateCalls)
+		}
+
+		// results: 1 created, 1 updated, 1 skipped
+		if status[SyncCreated] != 1 {
+			t.Errorf("SyncCreated = %d, want 1", status[SyncCreated])
+		}
+		if status[SyncUpdated] != 1 {
+			t.Errorf("SyncUpdated = %d, want 1", status[SyncUpdated])
+		}
+		if status[SyncSkipped] != 1 {
+			t.Errorf("SyncSkipped = %d, want 1", status[SyncSkipped])
+		}
+	})
 }

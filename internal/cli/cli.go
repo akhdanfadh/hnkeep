@@ -220,6 +220,24 @@ func Run(ctx context.Context) error {
 		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
 			karakeep.WithLogger(log),
 		)
+
+		// pre-fetch existing bookmarks for client-side deduplication
+		var existingBookmarks map[string]karakeep.ExistingBookmark
+		if cfg.Verbose {
+			fmt.Fprintf(os.Stderr, "Pre-fetching existing bookmarks... ")
+		}
+		existingBookmarks, err = karakeepClient.ListBookmarks(ctx)
+		if err != nil {
+			if cfg.Verbose {
+				fmt.Fprintf(os.Stderr, "failed\n")
+			}
+			return fmt.Errorf("pre-fetching bookmarks: %w", err)
+		}
+		stats.prefetched = len(existingBookmarks)
+		if cfg.Verbose {
+			fmt.Fprintf(os.Stderr, "found %d\n", stats.prefetched)
+		}
+
 		syncOpts := []syncer.Option{
 			syncer.WithConcurrency(cfg.Concurrency),
 			syncer.WithLogger(log),

@@ -2,6 +2,47 @@ package karakeep
 
 import "testing"
 
+func TestListBookmarkContent_GetURL(t *testing.T) {
+	tests := map[string]struct {
+		content ListBookmarkContent
+		want    string
+	}{
+		"link type returns URL": {
+			content: ListBookmarkContent{Type: "link", URL: ptr("https://example.com")},
+			want:    "https://example.com",
+		},
+		"link type with nil URL returns empty": {
+			content: ListBookmarkContent{Type: "link", URL: nil},
+			want:    "",
+		},
+		"asset type returns sourceUrl": {
+			content: ListBookmarkContent{Type: "asset", SourceURL: ptr("https://example.com/doc.pdf")},
+			want:    "https://example.com/doc.pdf",
+		},
+		"asset type with nil sourceUrl returns empty": {
+			content: ListBookmarkContent{Type: "asset", SourceURL: nil},
+			want:    "",
+		},
+		"text type returns empty": {
+			content: ListBookmarkContent{Type: "text"},
+			want:    "",
+		},
+		"unknown type returns empty": {
+			content: ListBookmarkContent{Type: "unknown"},
+			want:    "",
+		},
+	}
+
+	for name, tc := range tests {
+		t.Run(name, func(t *testing.T) {
+			got := tc.content.GetURL()
+			if got != tc.want {
+				t.Errorf("GetURL() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestHTTPError_Error(t *testing.T) {
 	err := HTTPError{StatusCode: 500, Body: "internal server error"}
 	got := err.Error()

@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
+	"time"
 )
+
+const listBookmarksPageSize = 100
 
 // CreateBookmark creates a new link-type bookmark given the URL.
 //
@@ -94,4 +98,69 @@ func (c *Client) UpdateBookmark(ctx context.Context, id string, createdAt, note 
 
 		return nil
 	})
+}
+
+// ListBookmarks fetches all bookmarks and returns a map of URL to ExistingBookmark for deduplication.
+// It handles pagination internally and extracts URLs from both link and asset content types.
+// Refer to https://docs.karakeep.app/api/get-all-bookmarks and the codebase.
+func (c *Client) ListBookmarks(ctx context.Context) (map[string]ExistingBookmark, error) {
+	result := make(map[string]ExistingBookmark)
+	var cursor string
+	page := 1
+
+	for {
+		// check for cancellation
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		path := fmt.Sprintf("/bookmarks?limit=%d", listBookmarksPageSize)
+		if cursor != "" {
+			path += "&cursor=" + url.QueryEscape(cursor) // if not escaped, may break for special chars
+		}
+
+		var listResp ListBookmarksResponse
+		err := c.doRequestWithRetries(ctx, http.MethodGet, path, nil, func(resp *http.Response) error {
+			if resp.StatusCode != http.StatusOK {
+				return readHTTPError(resp)
+			}
+			return json.NewDecoder(resp.Body).Decode(&listResp)
+		})
+		if err != nil {
+			return nil, fmt.Errorf("listing bookmarks (page %d): %w", page, err)
+		}
+
+		for _, bm := range listResp.Bookmarks {
+			bmURL := bm.Content.GetURL()
+			if bmURL == "" {
+				continue // skip text bookmarks
+			}
+			createdAt, err := iso8601ToUnix(bm.CreatedAt)
+			if err != nil {
+				continue // skip malformed entries
+			}
+			result[bmURL] = ExistingBookmark{
+				ID:        bm.ID,
+				CreatedAt: createdAt,
+				Note:      bm.Note,
+			}
+		}
+
+		if listResp.NextCursor == nil || *listResp.NextCursor == "" {
+			break // no more pages
+		}
+		cursor = *listResp.NextCursor
+		page++
+	}
+
+	return result, nil
+}
+
+// iso8601ToUnix converts an ISO8601 date string to a Unix timestamp (in seconds).
+func iso8601ToUnix(iso string) (int64, error) {
+	t, err := time.Parse(time.RFC3339, iso)
+	if err != nil {
+		return 0, fmt.Errorf("parsing ISO8601 date %q: %w", iso, err)
+	}
+	return t.Unix(), nil
 }

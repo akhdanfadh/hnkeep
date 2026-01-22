@@ -21,10 +21,11 @@ const (
 
 // Syncer represents the syncer pipeline orchestrator.
 type Syncer struct {
-	client      *karakeep.Client
-	concurrency int
-	logger      logger.Logger
-	progresser  logger.Progresser
+	client            *karakeep.Client
+	concurrency       int
+	logger            logger.Logger
+	progresser        logger.Progresser
+	existingBookmarks map[string]karakeep.ExistingBookmark
 }
 
 // Option configures the Syncer.
@@ -45,22 +46,29 @@ func New(client *karakeep.Client, opts ...Option) *Syncer {
 
 // WithConcurrency sets the number of parallel API fetches.
 func WithConcurrency(n int) Option {
-	return func(c *Syncer) {
-		c.concurrency = n
+	return func(s *Syncer) {
+		s.concurrency = n
 	}
 }
 
 // WithLogger sets the logger for info/warn/error messages.
 func WithLogger(l logger.Logger) Option {
-	return func(c *Syncer) {
-		c.logger = l
+	return func(s *Syncer) {
+		s.logger = l
 	}
 }
 
 // WithProgress sets a progresser for progress updates during sync.
 func WithProgress(p logger.Progresser) Option {
-	return func(c *Syncer) {
-		c.progresser = p
+	return func(s *Syncer) {
+		s.progresser = p
+	}
+}
+
+// WithExistingBookmarks sets pre-fetched bookmarks for client-side deduplication.
+func WithExistingBookmarks(e map[string]karakeep.ExistingBookmark) Option {
+	return func(s *Syncer) {
+		s.existingBookmarks = e
 	}
 }
 
@@ -147,20 +155,40 @@ func (s *Syncer) Sync(ctx context.Context, bookmarks []converter.Bookmark) map[S
 // syncTask performs the sync operation for a single bookmark.
 //
 // The following business logic is made:
-//  1. Create the bookmark (or get existing) by passing url, createdAt, title, and note.
-//  2. Since attaching tags is idempotent, always attach tags if converted has any.
-//  3. If it is newly created, we're done.
-//  4. If the (unedited) existing is returned, we check whether to update createdAt (by earliest) and/or note (see mergeNotes).
+//  1. Check pre-fetched map first (client-side dedup for asset URLs).
+//  2. Create the bookmark (or get existing) by passing url, createdAt, title, and note.
+//  3. Since attaching tags is idempotent, always attach tags if converted has any.
+//  4. If it is newly created, we're done.
+//  5. If the (unedited) existing is returned, we check whether to update createdAt (by earliest) and/or note (see mergeNotes).
 func (s *Syncer) syncTask(ctx context.Context, convertedBM converter.Bookmark) (SyncStatus, error) {
-	// create or get existing bookmark
-	karakeepBM, alreadyExists, err := s.client.CreateBookmark(ctx,
-		convertedBM.Content.URL,
-		unixToISO8601(convertedBM.CreatedAt),
-		convertedBM.Title,
-		convertedBM.Note,
-	)
-	if err != nil {
-		return SyncFailed, fmt.Errorf("creating bookmark: %w", err)
+	var karakeepBM *karakeep.CreateBookmarkResponse
+	var alreadyExists bool
+
+	// client-side dedup: check pre-fetched map first
+	if s.existingBookmarks != nil {
+		if existing, found := s.existingBookmarks[convertedBM.Content.URL]; found {
+			karakeepBM = &karakeep.CreateBookmarkResponse{
+				ID:        existing.ID,
+				CreatedAt: unixToISO8601(existing.CreatedAt),
+				Note:      existing.Note,
+			}
+			alreadyExists = true
+		}
+	}
+
+	// only call api if not found in pre-fetched
+	if karakeepBM == nil {
+		var err error
+		// create or get existing bookmark
+		karakeepBM, alreadyExists, err = s.client.CreateBookmark(ctx,
+			convertedBM.Content.URL,
+			unixToISO8601(convertedBM.CreatedAt),
+			convertedBM.Title,
+			convertedBM.Note,
+		)
+		if err != nil {
+			return SyncFailed, fmt.Errorf("creating bookmark: %w", err)
+		}
 	}
 
 	// attach tags if any

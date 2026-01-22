@@ -23,6 +23,7 @@ type stats struct {
 	fetchEnd    time.Time
 
 	// sync stats
+	prefetched  int
 	syncCreated int
 	syncUpdated int
 	syncSkipped int
@@ -116,6 +117,9 @@ func printSyncSummary(stats stats) {
 	}
 
 	fmt.Fprintf(os.Stderr, "\nSync results:\n")
+	if stats.prefetched > 0 {
+		fmt.Fprintf(os.Stderr, "  Pre-fetched   : %d   (existing bookmarks)\n", stats.prefetched)
+	}
 	fmt.Fprintf(os.Stderr, "  Created       : %d\n", stats.syncCreated)
 	fmt.Fprintf(os.Stderr, "  Updated       : %d\n", stats.syncUpdated)
 	fmt.Fprintf(os.Stderr, "  Skipped       : %d   (already up-to-date)\n", stats.syncSkipped)

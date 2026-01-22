@@ -86,3 +86,46 @@ type UpdateBookmarkRequest struct {
 	CreatedAt *string `json:"createdAt,omitempty"` // nullable, ISO8601
 	Note      *string `json:"note,omitempty"`      // nullable
 }
+
+// ExistingBookmark represents a pre-fetched bookmark data for deduplication.
+type ExistingBookmark struct {
+	ID        string
+	CreatedAt int64 // Unix timestamp
+	Note      *string
+}
+
+// ListBookmarksResponse represents the paginated response body when listing bookmarks.
+type ListBookmarksResponse struct {
+	Bookmarks  []ListBookmark `json:"bookmarks"`
+	NextCursor *string        `json:"nextCursor"`
+}
+
+// ListBookmark represents a bookmark in the list bookmarks response.
+type ListBookmark struct {
+	ID        string              `json:"id"`
+	CreatedAt string              `json:"createdAt"`
+	Note      *string             `json:"note"`
+	Content   ListBookmarkContent `json:"content"`
+}
+
+// ListBookmarkContent handles discriminated union of bookmark content types.
+type ListBookmarkContent struct {
+	Type      string  `json:"type"`      // "link", "assetL", "text"
+	URL       *string `json:"url"`       // present when type="link"
+	SourceURL *string `json:"sourceUrl"` // present when type="asset"
+}
+
+// GetURL extracts the bookmark	URL based on its content type.
+func (c ListBookmarkContent) GetURL() string {
+	switch c.Type {
+	case "link":
+		if c.URL != nil {
+			return *c.URL
+		}
+	case "asset":
+		if c.SourceURL != nil {
+			return *c.SourceURL
+		}
+	}
+	return ""
+}

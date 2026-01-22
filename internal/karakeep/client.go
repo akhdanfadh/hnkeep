@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/akhdanfadh/hnkeep/internal/logger"
 )
 
 const (
@@ -24,6 +26,7 @@ type Client struct {
 	httpClient *http.Client
 	maxRetries int
 	retryWait  time.Duration
+	logger     logger.Logger
 }
 
 // ClientOption configures the Client.
@@ -37,6 +40,7 @@ func NewClient(baseURL, apiKey string, opts ...ClientOption) *Client {
 		httpClient: &http.Client{Timeout: defaultTimeout},
 		maxRetries: defaultMaxRetries,
 		retryWait:  defaultRetryWait,
+		logger:     logger.Noop(),
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -62,6 +66,13 @@ func WithMaxRetries(n int) ClientOption {
 func WithRetryWait(d time.Duration) ClientOption {
 	return func(c *Client) {
 		c.retryWait = d
+	}
+}
+
+// WithLogger sets the logger for retry and rate limit visibility.
+func WithLogger(l logger.Logger) ClientOption {
+	return func(c *Client) {
+		c.logger = l
 	}
 }
 
@@ -110,6 +121,7 @@ func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, 
 		// exponential backoff capped at 30s for rate limiting
 		if errors.Is(err, ErrRateLimited) {
 			backoff := min(c.retryWait*time.Duration(1<<attempt), 30*time.Second)
+			c.logger.Warn("rate limited, retrying in %s...", backoff)
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
@@ -119,6 +131,8 @@ func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, 
 			continue
 		}
 
+		// log transient errors before retry
+		c.logger.Warn("request failed (attempt %d/%d): %v", attempt+1, c.maxRetries, err)
 		lastErr = err
 	}
 

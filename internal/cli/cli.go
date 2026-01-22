@@ -124,12 +124,12 @@ func Run(ctx context.Context) error {
 
 	// configure logger and clients
 	logger := logger.NewStdLogger(os.Stderr, cfg.Quiet)
-	client := hackernews.NewClient()
+	client := hackernews.NewClient(hackernews.WithLogger(logger))
 	var fetcher converter.ItemFetcher = client
 
 	// use cached client if cache dir is set
 	if cfg.CacheDir != "" {
-		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir, hackernews.WithLogger(logger))
+		cachedClient, err := hackernews.NewCachedClient(client, cfg.CacheDir, hackernews.WithCacheLogger(logger))
 		if err != nil {
 			return fmt.Errorf("creating cached client: %w", err)
 		}
@@ -174,7 +174,9 @@ func Run(ctx context.Context) error {
 			fmt.Fprintf(os.Stderr, "Warning: --output is ignored in sync mode\n")
 		}
 
-		karakeepClient := karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey)
+		karakeepClient := karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
+			karakeep.WithLogger(logger),
+		)
 		sync := syncer.New(
 			karakeepClient,
 			syncer.WithConcurrency(cfg.Concurrency),

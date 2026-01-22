@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 	"sync/atomic"
+
+	"github.com/akhdanfadh/hnkeep/internal/logger"
 )
 
 // Cache permanent-error states for negative caching.
@@ -23,20 +25,6 @@ type cacheEntry struct {
 	Error string `json:"error,omitempty"`
 }
 
-// Logger defines the interface for logging messages.
-type Logger interface {
-	Info(format string, args ...any)
-	Warn(format string, args ...any)
-	Error(format string, args ...any)
-}
-
-// noopLogger is a Logger implementation that does nothing.
-type noopLogger struct{}
-
-func (noopLogger) Info(string, ...any)  {}
-func (noopLogger) Warn(string, ...any)  {}
-func (noopLogger) Error(string, ...any) {}
-
 // inflightCall deduplicates concurrent fetches for the same item (singleflight pattern).
 type inflightCall struct {
 	wg   sync.WaitGroup
@@ -48,7 +36,7 @@ type inflightCall struct {
 type CachedClient struct {
 	client   *Client
 	cacheDir string
-	logger   Logger
+	logger   logger.Logger
 
 	mu        sync.Mutex
 	inflight  map[int]*inflightCall
@@ -58,8 +46,8 @@ type CachedClient struct {
 // CacheOption configures the CachedClient.
 type CacheOption func(*CachedClient)
 
-// WithLogger sets a custom Logger for the CachedClient.
-func WithLogger(l Logger) CacheOption {
+// WithCacheLogger sets a custom Logger for the CachedClient.
+func WithCacheLogger(l logger.Logger) CacheOption {
 	return func(c *CachedClient) {
 		c.logger = l
 	}
@@ -73,7 +61,7 @@ func NewCachedClient(client *Client, cacheDir string, opts ...CacheOption) (*Cac
 	c := &CachedClient{
 		client:   client,
 		cacheDir: cacheDir,
-		logger:   &noopLogger{},
+		logger:   logger.Noop(),
 		inflight: make(map[int]*inflightCall),
 	}
 	for _, opt := range opts {

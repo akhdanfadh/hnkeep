@@ -171,12 +171,15 @@ func Run(ctx context.Context) error {
 	}
 
 	// perform conversion
-	conv := converter.New(
+	convOpts := []converter.Option{
 		converter.WithFetcher(fetcher),
 		converter.WithConcurrency(cfg.Concurrency),
 		converter.WithLogger(log),
-		converter.WithProgress(progressFetch),
-	)
+	}
+	if progressFetch != nil {
+		convOpts = append(convOpts, converter.WithProgress(progressFetch))
+	}
+	conv := converter.New(convOpts...)
 
 	stats.fetchStart = time.Now()
 	items, err := conv.FetchItems(ctx, bookmarks)
@@ -217,12 +220,14 @@ func Run(ctx context.Context) error {
 		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
 			karakeep.WithLogger(log),
 		)
-		sync := syncer.New(
-			karakeepClient,
+		syncOpts := []syncer.Option{
 			syncer.WithConcurrency(cfg.Concurrency),
 			syncer.WithLogger(log),
-			syncer.WithProgress(progressSync),
-		)
+		}
+		if progressSync != nil {
+			syncOpts = append(syncOpts, syncer.WithProgress(progressSync))
+		}
+		sync := syncer.New(karakeepClient, syncOpts...)
 
 		stats.syncStart = time.Now()
 		syncStatus := sync.Sync(ctx, export.Bookmarks)

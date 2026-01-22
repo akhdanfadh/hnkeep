@@ -64,6 +64,7 @@ hnkeep -i harmonic-export.txt -sync
 | `-sync`            |                                                | Sync directly to Karakeep API (instead of JSON file) |
 | `-api-url`         | env `KARAKEEP_API_URL`                         | Karakeep API base URL (required for sync)            |
 | `-api-key`         | env `KARAKEEP_API_KEY`                         | Karakeep API key (required for sync)                 |
+| -api-timeout       | 30s                                            | Karakeep API request timeout                         |
 | `-before`          |                                                | Only include input bookmarks before this date        |
 | `-after`           |                                                | Only include input bookmarks after this date         |
 | `-dry-run`         |                                                | Preview conversion without API calls                 |

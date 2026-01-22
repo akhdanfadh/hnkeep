@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	defaultTimeout    = 10 * time.Second
+	defaultTimeout    = 30 * time.Second
 	defaultMaxRetries = 3
 	defaultRetryWait  = time.Second
 )
@@ -76,6 +76,13 @@ func WithLogger(l logger.Logger) ClientOption {
 	}
 }
 
+// WithTimeout sets the timeout for HTTP requests.
+func WithTimeout(d time.Duration) ClientOption {
+	return func(c *Client) {
+		c.httpClient.Timeout = d
+	}
+}
+
 // waitWithContext waits for the specified duration or until context is cancelled.
 func waitWithContext(ctx context.Context, d time.Duration) error {
 	timer := time.NewTimer(d)
@@ -116,8 +123,8 @@ func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, 
 		if errors.As(err, &httpErr) && httpErr.IsClientError() {
 			return err // client error
 		}
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return err // context cancellation
+		if ctx.Err() != nil {
+			return ctx.Err() // user cancellation
 		}
 
 		// exponential backoff capped at 30s for all retryable errors

@@ -117,9 +117,8 @@ func (c *Client) GetItem(ctx context.Context, id int) (*Item, error) {
 			return nil, err // immediate return on known errors
 		}
 
-		// context cancellation should return immediately
-		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-			return nil, err
+		if ctx.Err() != nil {
+			return nil, ctx.Err() // user cancelled
 		}
 
 		// exponential backoff capped at 30s for all retryable errors

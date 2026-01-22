@@ -123,7 +123,9 @@ func Run(ctx context.Context) error {
 	// pre-flight connectivity check for sync mode (includes dry-run)
 	var karakeepClient *karakeep.Client
 	if cfg.Sync {
-		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey)
+		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
+			karakeep.WithTimeout(cfg.APITimeout),
+		)
 
 		if cfg.Verbose {
 			fmt.Fprintf(os.Stderr, "Checking Karakeep API connectivity... ")
@@ -218,6 +220,7 @@ func Run(ctx context.Context) error {
 
 		// add logger to the existing client (created during connectivity check)
 		karakeepClient = karakeep.NewClient(cfg.APIBaseURL, cfg.APIKey,
+			karakeep.WithTimeout(cfg.APITimeout),
 			karakeep.WithLogger(log),
 		)
 

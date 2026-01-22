@@ -16,22 +16,23 @@ var (
 )
 
 type Config struct {
-	InputPath    string   // Input file path (default: stdin)
-	OutputPath   string   // Output file path (default: stdout)
-	Verbose      bool     // Show progress messages during fetch/sync
-	DryRun       bool     // Preview conversion without API calls
-	Before       int64    // Process only bookmarks before this timestamp (0 = all)
-	After        int64    // Process only bookmarks after this timestamp (0 = all)
-	Limit        int      // Process only first N bookmarks (0 = all)
-	Concurrency  int      // Number of concurrent API calls
-	Tags         []string // Tags to add to all imported bookmarks
-	NoteTemplate string   // Template for note field in bookmarks
-	Dedupe       bool     // Merge duplicate URLs (default: true)
-	CacheDir     string   // HN API responses cache directory path
-	ClearCache   bool     // Clear the cache before running
-	Sync         bool     // Export directly using Karakeep's API
-	APIBaseURL   string   // Karakeep API URL for direct sync
-	APIKey       string   // Karakeep API key for direct sync
+	InputPath    string        // Input file path (default: stdin)
+	OutputPath   string        // Output file path (default: stdout)
+	Verbose      bool          // Show progress messages during fetch/sync
+	DryRun       bool          // Preview conversion without API calls
+	Before       int64         // Process only bookmarks before this timestamp (0 = all)
+	After        int64         // Process only bookmarks after this timestamp (0 = all)
+	Limit        int           // Process only first N bookmarks (0 = all)
+	Concurrency  int           // Number of concurrent API calls
+	Tags         []string      // Tags to add to all imported bookmarks
+	NoteTemplate string        // Template for note field in bookmarks
+	Dedupe       bool          // Merge duplicate URLs (default: true)
+	CacheDir     string        // HN API responses cache directory path
+	ClearCache   bool          // Clear the cache before running
+	Sync         bool          // Export directly using Karakeep's API
+	APIBaseURL   string        // Karakeep API URL for direct sync
+	APIKey       string        // Karakeep API key for direct sync
+	APITimeout   time.Duration // Karakeep API request timeout duration
 }
 
 // parseFlags parses command-line flags and returns a Config struct.
@@ -75,6 +76,7 @@ func parseFlags() (*Config, error) {
 	sync := flag.Bool("sync", false, "Enable sync mode (push to Karakeep API directly)")
 	apiBaseURL := flag.String("api-url", "", "Karakeep API URL (env: KARAKEEP_API_URL)")
 	apiKey := flag.String("api-key", "", "Karakeep API key (env: KARAKEEP_API_KEY)")
+	apiTimeout := flag.Duration("api-timeout", 30*time.Second, "Karakeep API request timeout duration")
 
 	flag.Parse()
 
@@ -151,6 +153,7 @@ func parseFlags() (*Config, error) {
 		Sync:         *sync,
 		APIBaseURL:   resolvedAPIBaseURL,
 		APIKey:       resolvedAPIKey,
+		APITimeout:   *apiTimeout,
 	}, nil
 }
 

@@ -82,6 +82,24 @@ func WithLogger(l logger.Logger) ClientOption {
 	}
 }
 
+// waitWithContext waits for the specified duration or until context is cancelled.
+//
+// NOTE: In previous commit, we use time.After that, until Go 1.23, allocates a timer
+// that won't be GC'd until it fires. If the context is cancelled early, the timer
+// lives until expiry, creating memory pressure for long durations (e.g., 30s backoff).
+// The solution is to use time.NewTimer with explicit Stop(), and we do that here for clarity.
+// - https://pkg.go.dev/time#After (see "underlying Timer would not be recovered")
+func waitWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		timer.Stop()
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
 // GetItem fetches an item by its ID with retry logic.
 func (c *Client) GetItem(ctx context.Context, id int) (*Item, error) {
 	url := fmt.Sprintf("%s/item/%d.json", c.baseURL, id)
@@ -91,15 +109,6 @@ func (c *Client) GetItem(ctx context.Context, id int) (*Item, error) {
 		// check for cancellation before each attempt
 		if ctx.Err() != nil {
 			return nil, ctx.Err()
-		}
-
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			// use a timer that respects context cancellation
-			case <-time.After(c.retryWait):
-			}
 		}
 
 		item, err := c.fetchItem(ctx, url)
@@ -118,21 +127,17 @@ func (c *Client) GetItem(ctx context.Context, id int) (*Item, error) {
 			return nil, err
 		}
 
-		// exponential backoff capped at 30s for rate limiting
+		// exponential backoff capped at 30s for all retryable errors
+		backoff := min(c.retryWait*time.Duration(1<<attempt), 30*time.Second)
 		if errors.Is(err, ErrRateLimited) {
-			backoff := min(c.retryWait*time.Duration(1<<attempt), 30*time.Second)
 			c.logger.Warn("rate limited, retrying in %s...", backoff)
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			case <-time.After(backoff):
-			}
-			lastErr = err
-			continue
+		} else {
+			c.logger.Warn("request failed (attempt %d/%d): %v, retrying in %s...", attempt+1, c.maxRetries, err, backoff)
 		}
 
-		// log transient errors before retry
-		c.logger.Warn("request failed (attempt %d/%d): %v", attempt+1, c.maxRetries, err)
+		if err := waitWithContext(ctx, backoff); err != nil {
+			return nil, err
+		}
 		lastErr = err
 	}
 

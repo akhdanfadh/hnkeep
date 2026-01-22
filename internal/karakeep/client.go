@@ -76,12 +76,23 @@ func WithLogger(l logger.Logger) ClientOption {
 	}
 }
 
+// waitWithContext waits for the specified duration or until context is cancelled.
+func waitWithContext(ctx context.Context, d time.Duration) error {
+	timer := time.NewTimer(d)
+	select {
+	case <-ctx.Done():
+		timer.Stop()
+		return ctx.Err()
+	case <-timer.C:
+		return nil
+	}
+}
+
 // doRequestWithRetries performs the HTTP request with retries on failure.
 //
-// We assume standard practices for rate limiting and implement exponential
-// backoff for retrying requests when rate limited, just like the HN client.
-// There is no documentation for rate limiting in Karakeep API, but they do
-// document it in practice for self-hosters to be aware of it.
+// We implement exponential backoff for all retryable errors (rate limiting,
+// network errors, server errors). There is no documentation for rate limiting
+// in Karakeep API, but they do document it in practice for self-hosters.
 // Refer to https://docs.karakeep.app/administration/security-considerations/.
 func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, body []byte, handleResp func(*http.Response) error) error {
 	url := c.baseURL + path
@@ -91,15 +102,6 @@ func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, 
 		// check for cancellation before each attempt
 		if ctx.Err() != nil {
 			return ctx.Err()
-		}
-
-		if attempt > 0 {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			// use a timer that respects context cancellation
-			case <-time.After(c.retryWait):
-			}
 		}
 
 		// do request and immediate return on non-retryable errors
@@ -118,21 +120,17 @@ func (c *Client) doRequestWithRetries(ctx context.Context, method, path string, 
 			return err // context cancellation
 		}
 
-		// exponential backoff capped at 30s for rate limiting
+		// exponential backoff capped at 30s for all retryable errors
+		backoff := min(c.retryWait*time.Duration(1<<attempt), 30*time.Second)
 		if errors.Is(err, ErrRateLimited) {
-			backoff := min(c.retryWait*time.Duration(1<<attempt), 30*time.Second)
 			c.logger.Warn("rate limited, retrying in %s...", backoff)
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-time.After(backoff):
-			}
-			lastErr = err
-			continue
+		} else {
+			c.logger.Warn("request failed (attempt %d/%d): %v, retrying in %s...", attempt+1, c.maxRetries, err, backoff)
 		}
 
-		// log transient errors before retry
-		c.logger.Warn("request failed (attempt %d/%d): %v", attempt+1, c.maxRetries, err)
+		if err := waitWithContext(ctx, backoff); err != nil {
+			return err
+		}
 		lastErr = err
 	}
 

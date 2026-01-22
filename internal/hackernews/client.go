@@ -83,12 +83,7 @@ func WithLogger(l logger.Logger) ClientOption {
 }
 
 // waitWithContext waits for the specified duration or until context is cancelled.
-//
-// NOTE: In previous commit, we use time.After that, until Go 1.23, allocates a timer
-// that won't be GC'd until it fires. If the context is cancelled early, the timer
-// lives until expiry, creating memory pressure for long durations (e.g., 30s backoff).
-// The solution is to use time.NewTimer with explicit Stop(), and we do that here for clarity.
-// - https://pkg.go.dev/time#After (see "underlying Timer would not be recovered")
+// Uses NewTimer instead of time.After to avoid memory leak before Go 1.23 for explicitness.
 func waitWithContext(ctx context.Context, d time.Duration) error {
 	timer := time.NewTimer(d)
 	select {

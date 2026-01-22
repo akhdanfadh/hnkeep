@@ -56,12 +56,6 @@ func WithLogger(l logger.Logger) Option {
 	}
 }
 
-// NOTE: Finally, yes, we are using enums! The terms "iota" itself is a letter
-// in the Greek alphabet meaning "smallest" or "least" and typical for math notations.
-// - https://go.dev/wiki/Iota
-// - https://stackoverflow.com/questions/14426366/what-is-an-idiomatic-way-of-representing-enums-in-go
-// - https://stackoverflow.com/questions/31650192/whats-the-full-name-for-iota-in-golang
-
 // SyncStatus represents the result of a sync operation.
 type SyncStatus int
 
@@ -84,14 +78,8 @@ func (e SyncError) Error() string {
 }
 
 // Unwrap returns the underlying error for use with errors.Is and errors.As.
-//
-// NOTE: Unwrap is part of Go's error wrapping convention. By implementing this,
-// we allow callers to inspect the underlying error using errors.Is(err, target)
-// and errors.As(err, &target) to extract typed errors from the chain.
-// Without Unwrap, a SyncError would be opaque and callers couldn't check what
-// caused the sync failure. This is important for graceful shutdown detection.
-// - https://go.dev/blog/go1.13-errors
-// - https://pkg.go.dev/errors#Unwrap
+// Actually HTTPError doesn't need Unwrap as it is not wrapping another error,
+// and just has StatusCode and Body fields, but just in case in the future?
 func (e SyncError) Unwrap() error {
 	return e.Err
 }
@@ -241,10 +229,7 @@ func mergeNotes(existing, incoming *string) (merged *string, needsUpdate bool) {
 		existingNote = *existing
 	}
 
-	// NOTE: Short-circuit evaluation with || ensures we only dereference
-	// after the nil check fails, avoiding a nil pointer dereference panic.
-	// Silly beginner mistake by me, mine was reversed before this.
-	if incoming == nil || *incoming == "" {
+	if incoming == nil || *incoming == "" { // nil check before dereference
 		return existing, false
 	}
 

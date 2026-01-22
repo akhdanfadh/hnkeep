@@ -149,9 +149,7 @@ func (c *Client) doRequest(ctx context.Context, method, url string, body []byte,
 		return fmt.Errorf("creating request: %w", err)
 	}
 
-	// NOTE: Karakeep API (built with Hono) always expects JSON request bodies
-	// (validated via zValidator("json", ...)) and returns JSON responses via c.json().
-	// Errors are returned as JSON via HTTPException with { message: string } format.
+	// karakeep API expects JSON request/response (see JOURNAL.md)
 	req.Header.Set("Authorization", "Bearer "+c.apiKey)
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")

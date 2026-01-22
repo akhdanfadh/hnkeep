@@ -7,14 +7,6 @@ import (
 	"net/http"
 )
 
-// NOTE: The term sentinel for "sentinel errors" comes from the concept of a
-// sentinel value in CS, which is a special value that marks a boundary or
-// signals a particular condition. Like a guard (sentinel) standing watch,
-// these errors "stand out" as recognizable markers for specific situations,
-// rather than being generic error messages that require string parsing to
-// undertand. In Go, they are typically defined as package-level variables
-// of type error and compared using errors.Is().
-
 // Sentinel errors for specific API conditions.
 var (
 	ErrUnauthorized     = errors.New("unauthorized: invalid or missing API key")
@@ -23,13 +15,7 @@ var (
 )
 
 // HTTPError represents an HTTP error from the API with status code and response body.
-//
-// NOTE: We store the raw Body string rather than parsing a specific JSON structure because
-// Karakeep's error responses vary. Storing raw body ensures we capture all error details for debugging.
-// - Format 1: manual JSON response (search `c.json` in packages/api/routes/*.ts)
-// - Format 2: Hono's HTTP exception (search `throw new HTTPException` in packages/api/middlewares/*.ts)
-// - Format 3: Hono's Zod validation errors (search `zValidator“ in packages/api/routes/*.ts)
-// For reference, Hono is the web framework used by Karakeep: https://hono.dev/.
+// Body is raw string since Karakeep error formats vary (see JOURNALS.md).
 type HTTPError struct {
 	StatusCode int
 	Body       string

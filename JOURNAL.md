@@ -7,6 +7,172 @@ Most likely when the project is ready for release, I will move them all here.
 
 The following notes are sorted by the most recent at the top.
 
+## time.After memory leak before Go 1.23
+
+```go
+// internal/hackernews/client.go (e3f3ffd, 2026-01-22)
+
+// waitWithContext waits for the specified duration or until context is cancelled.
+//
+// NOTE: In previous commit, we use time.After that, until Go 1.23, allocates a timer
+// that won't be GC'd until it fires. If the context is cancelled early, the timer
+// lives until expiry, creating memory pressure for long durations (e.g., 30s backoff).
+// The solution is to use time.NewTimer with explicit Stop(), and we do that here for clarity.
+// - https://pkg.go.dev/time#After (see "underlying Timer would not be recovered")
+func waitWithContext(ctx context.Context, d time.Duration) error {
+    timer := time.NewTimer(d)
+    select {
+    case <-ctx.Done():
+        timer.Stop()
+        return ctx.Err()
+    case <-timer.C:
+        return nil
+    }
+}
+```
+
+## Go select random case selection edge case
+
+```go
+// internal/converter/converter.go (b97ac4a, 2026-01-22)
+
+// NOTE: This check handles an edge case in Go's select behavior.
+// When multiple cases are ready simultaneously, select picks one via
+// "uniform pseufo-random selection". So if the context is cancelled
+// at the exact moment a semaphore slot opens, we might acquire the
+// semaphore instead of exiting via ctx.Done(). This is defensive.
+// - https://golang.org/ref/spec#Select_statements.
+if ctx.Err() != nil {
+    return
+}
+```
+
+## Clarification: ctx check before channel send
+
+```go
+// internal/converter/converter.go (b97ac4a, 2026-01-22)
+
+item, err := c.fetcher.GetItem(ctx, bookmark.ID)
+// NOTE: My comment was wrong on this. I put "to avoid blocking on full channel"
+// because checking ctx before channel sends is a common pattern to prevent
+// goroutine leaks. But actually that's wrong here. The result channel is sized
+// to len(bookmarks), and each goroutine sends at most one result, so it can never
+// be full. The actual purpose is to skip unnecessary work after cancellation,
+// like sending or logging.
+if ctx.Err() != nil {
+    return
+}
+```
+
+## Error Unwrap convention for error chains
+
+```go
+// internal/syncer/syncer.go (2960fb1, 2026-01-22)
+
+// Unwrap returns the underlying error for use with errors.Is and errors.As.
+//
+// NOTE: Unwrap is part of Go's error wrapping convention. By implementing this,
+// we allow callers to inspect the underlying error using errors.Is(err, target)
+// and errors.As(err, &target) to extract typed errors from the chain.
+// Without Unwrap, a SyncError would be opaque and callers couldn't check what
+// caused the sync failure. This is important for graceful shutdown detection.
+// - https://go.dev/blog/go1.13-errors
+// - https://pkg.go.dev/errors#Unwrap
+func (e SyncError) Unwrap() error {
+    return e.Err
+}
+```
+
+## Short-circuit evaluation with || and nil checks
+
+```go
+// internal/syncer/syncer.go (71055b8, 2026-01-22)
+
+// NOTE: Short-circuit evaluation with || ensures we only dereference
+// after the nil check fails, avoiding a nil pointer dereference panic.
+// Silly beginner mistake by me, mine was reversed before this.
+if incoming == nil || *incoming == "" {
+    return existing, false
+}
+```
+
+## Go iota for enums
+
+```go
+// internal/syncer/syncer.go (71055b8, 2026-01-22)
+
+// NOTE: Finally, yes, we are using enums! The terms "iota" itself is a letter
+// in the Greek alphabet meaning "smallest" or "least" and typical for math notations.
+// - https://go.dev/wiki/Iota
+// - https://stackoverflow.com/questions/14426366/what-is-an-idiomatic-way-of-representing-enums-in-go
+// - https://stackoverflow.com/questions/31650192/whats-the-full-name-for-iota-in-golang
+
+// SyncStatus represents the result of a sync operation.
+type SyncStatus int
+
+const (
+    SyncFailed SyncStatus = iota
+    SyncCreated
+    SyncUpdated
+    SyncSkipped
+)
+```
+
+## Karakeep API always expects JSON
+
+```go
+// internal/karakeep/client.go (71055b8, 2026-01-22)
+
+// NOTE: Karakeep API (built with Hono) always expects JSON request bodies
+// (validated via zValidator("json", ...)) and returns JSON responses via c.json().
+// Errors are returned as JSON via HTTPException with { message: string } format.
+req.Header.Set("Authorization", "Bearer "+c.apiKey)
+if body != nil {
+    req.Header.Set("Content-Type", "application/json")
+}
+req.Header.Set("Accept", "application/json")
+```
+
+## Sentinel errors naming origin
+
+```go
+// internal/karakeep/types.go (71055b8, 2026-01-22)
+
+// NOTE: The term sentinel for "sentinel errors" comes from the concept of a
+// sentinel value in CS, which is a special value that marks a boundary or
+// signals a particular condition. Like a guard (sentinel) standing watch,
+// these errors "stand out" as recognizable markers for specific situations,
+// rather than being generic error messages that require string parsing to
+// undertand. In Go, they are typically defined as package-level variables
+// of type error and compared using errors.Is().
+
+// Sentinel errors for specific API conditions.
+var (
+    ErrUnauthorized     = errors.New("unauthorized: invalid or missing API key")
+    ErrBookmarkNotFound = errors.New("bookmark not found")
+    ErrRateLimited      = errors.New("rate limited: too many requests")
+)
+```
+
+## HTTPError stores raw body for varied error formats
+
+```go
+// internal/karakeep/types.go (71055b8, 2026-01-22)
+
+// HTTPError represents an HTTP error from the API with status code and response body.
+//
+// NOTE: We store the raw Body string rather than parsing a specific JSON structure because
+// Karakeep's error responses vary. Storing raw body ensures we capture all error details for debugging.
+// - Format 1: manual JSON response (search `c.json` in packages/api/routes/*.ts)
+// - Format 2: Hono's HTTP exception (search `throw new HTTPException` in packages/api/middlewares/*.ts)
+// - Format 3: Hono's Zod validation errors (search `zValidator" in packages/api/routes/*.ts)
+// For reference, Hono is the web framework used by Karakeep: https://hono.dev/.
+type HTTPError struct {
+    StatusCode int
+    Body       string
+}
+```
+
 ## Go versioning via ldflags
 
 ```go

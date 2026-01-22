@@ -109,23 +109,13 @@ func (c *Converter) FetchItems(ctx context.Context, bookmarks []harmonic.Bookmar
 			}
 			defer func() { <-semaphore }() // release
 
-			// NOTE: This check handles an edge case in Go's select behavior.
-			// When multiple cases are ready simultaneously, select picks one via
-			// "uniform pseufo-random selection". So if the context is cancelled
-			// at the exact moment a semaphore slot opens, we might acquire the
-			// semaphore instead of exiting via ctx.Done(). This is defensive.
-			// - https://golang.org/ref/spec#Select_statements.
+			// check again after acquiring (pseudo-random select behavior)
 			if ctx.Err() != nil {
 				return
 			}
 
 			item, err := c.fetcher.GetItem(ctx, bookmark.ID)
-			// NOTE: My comment was wrong on this. I put "to avoid blocking on full channel"
-			// because checking ctx before channel sends is a common pattern to prevent
-			// goroutine leaks. But actually that's wrong here. The result channel is sized
-			// to len(bookmarks), and each goroutine sends at most one result, so it can never
-			// be full. The actual purpose is to skip unnecessary work after cancellation,
-			// like sending or logging.
+			// skip unnecessary work (send/log) after cancellation
 			if ctx.Err() != nil {
 				return
 			}

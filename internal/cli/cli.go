@@ -214,12 +214,13 @@ func Run(ctx context.Context) error {
 
 		printSyncSummary(stats)
 
-		// print sync errors
+		// print sync errors and return error for non-zero exit code
 		if len(syncErrs) > 0 {
 			fmt.Fprintf(os.Stderr, "\nSync errors:\n")
 			for _, e := range syncErrs {
 				fmt.Fprintf(os.Stderr, "  - %s: %v\n", e.URL, e.Err)
 			}
+			return fmt.Errorf("%d bookmark(s) failed to sync", len(syncErrs))
 		}
 
 		return nil

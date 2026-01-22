@@ -5,7 +5,17 @@ import "encoding/json"
 // Schema represents the Karakeep export/import file schema.
 // Refer to https://github.com/karakeep-app/karakeep/blob/main/packages/shared/import-export/exporters.ts
 type Schema struct {
-	Bookmarks []Bookmark `json:"bookmarks"`
+	Bookmarks SchemaBookmarks `json:"bookmarks"`
+}
+
+// SchemaBookmarks is a custom type to handle marshaling empty arrays instead of null.
+type SchemaBookmarks []Bookmark
+
+func (s SchemaBookmarks) MarshalJSON() ([]byte, error) {
+	if s == nil {
+		return []byte("[]"), nil
+	}
+	return json.Marshal([]Bookmark(s))
 }
 
 // Bookmark represents a single bookmark in the Karakeep export/import file.

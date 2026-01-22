@@ -63,7 +63,7 @@ hnkeep -i harmonic-export.txt --sync
 | `--after`           |                                                | Only include bookmarks after this date               |
 | `-n, --limit`       | 0                                              | Number of bookmarks to process (0 = all)             |
 | `-c, --concurrency` | 5                                              | Number of concurrent API calls                       |
-| `-t, --tags`        | "src:hackernews"                               | Comma-separated tags for all bookmarks               |
+| `-t, --tags`        | "src:hackernews,hnkeep:YYYYMMDD"               | Comma-separated tags for all bookmarks               |
 | `--note-template`   | "{{smart_url}}"                                | Template for bookmark note field                     |
 | `--no-dedupe`       |                                                | Keep duplicate URLs instead of merging them          |
 | `--cache-dir`       | `${XDG_CACHE_DIR}/hnkeep` or `~/.cache/hnkeep` | HN API responses cache directory                     |

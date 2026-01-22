@@ -58,8 +58,9 @@ func parseFlags() (*Config, error) {
 	concurrency := flag.Int("concurrency", 5, "Number of concurrent API calls.")
 	flag.IntVar(concurrency, "c", 5, "alias for -concurrency")
 
-	tags := flag.String("tags", "src:hackernews", "Comma-separated list of tags to add to all imported bookmarks")
-	flag.StringVar(tags, "t", "src:hackernews", "alias for -tags")
+	defaultTags := "src:hackernews,hnkeep:" + time.Now().Format("20060102")
+	tags := flag.String("tags", defaultTags, "Comma-separated list of tags to add to all imported bookmarks")
+	flag.StringVar(tags, "t", defaultTags, "alias for -tags")
 
 	noteTemplate := flag.String("note-template", "{{smart_url}}",
 		"Template for note field in bookmarks (empty = no note). "+

@@ -1,0 +1,12 @@
+services:
+  karakeep:
+    image: ghcr.io/karakeep-app/karakeep:0.30.0
+    volumes:
+      - data:/data
+    ports:
+      - 3000:3000
+    environment:
+      DATA_DIR: /data
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-changeme-generate-a-secure-secret}
+volumes:
+  data:

@@ -24,5 +24,23 @@ test-cover:
 build:
 	go build $(LDFLAGS) -o $(BINARY_NAME) ./cmd/hnkeep
 
+# sample n entries from file randomly, useful for testing
+sample-input:
+	@if [ -z "$$i" ]; then \
+		echo "Usage: make sample-input i=<input-file> [n=<count>]"; \
+		exit 1; \
+	fi; \
+	total=$$(tr '-' '\n' < "$$i" | wc -l | tr -d ' '); \
+	n=$${n:-$$total}; \
+	tr '-' '\n' < "$$i" | \
+	awk -v n="$$n" 'BEGIN{srand()} {lines[NR]=$$0} END{ \
+		for(i=1; i<=n && i<=NR; i++) { \
+			idx = int(rand()*(NR-i+1))+i; \
+			tmp=lines[i]; lines[i]=lines[idx]; lines[idx]=tmp; \
+		} \
+		for(i=1; i<=n && i<=NR; i++) \
+			printf "%s%s", lines[i], (i<n && i<NR?"-":"\n") \
+	}'
+
 clean:
 	rm -f $(BINARY_NAME)

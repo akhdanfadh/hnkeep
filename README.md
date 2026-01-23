@@ -10,6 +10,8 @@ hnkeep is designed not for just a single one-time migration, but also for regula
 
 I built this because I have been using Harmonic to read HN articles for years and occasionally bookmark posts either to read them later (_uhm..._) or to keep track of interesting content. If you have Android phone and like doom-scrolling HN, I really recommend this app. After 1500+ saved articles, I want to manage and backup these bookmarks somewhere centralized. Karakeep's features (mainly the auto tagging and link rot protection) and its self-hosted nature made it seems like an ideal choice for me.
 
+![`hnkeep-demo.gif` made with VHS](https://vhs.charm.sh/vhs-5QpmugcHeIi0IlBUAFeVOp.gif)
+
 ## Installation
 
 ### Pre-built binaries
